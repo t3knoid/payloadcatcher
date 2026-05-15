@@ -23,6 +23,7 @@ Use the user argument only to refine emphasis, scope, or style when provided.
 ## Output rules
 
 - Return one concise commit message line.
+- Present the message in text code block.
 - Prefer imperative mood.
 - Keep it short enough to use directly as a commit subject.
 - Do not include bullets, labels, quotes, or explanation.
