@@ -49,8 +49,16 @@ Use this layout for local development:
 payloadcatcher/
   backend/
     app/
+      api/
+      core/
+      middleware/
+      services/
+      infrastructure/
+      persistence/
     alembic/
-    pyproject.toml or requirements files
+    requirements files
+    Dockerfile
+    .env.example
   frontend/
     src/
     package.json
@@ -105,14 +113,6 @@ python -m pip install --upgrade pip
 
 Install dependencies using the backend project definition:
 
-- If using pyproject.toml:
-
-```powershell
-pip install -e .[dev]
-```
-
-- If using requirements files:
-
 ```powershell
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
@@ -136,6 +136,8 @@ API documentation endpoints during local development:
 - OpenAPI schema: <http://127.0.0.1:8000/openapi.json>
 
 Swagger is the required interactive API documentation surface for local development. Keep FastAPI route metadata, request models, response models, and status code declarations accurate so the generated docs stay aligned with `docs/api.md`.
+
+The initial backend scaffold exposes the operational health route at `<http://127.0.0.1:8000/healthz>` in addition to Swagger and OpenAPI endpoints.
 
 Reverse proxy note:
 
@@ -165,6 +167,7 @@ Default local dev URL is typically:
 4. Open the frontend URL.
 5. Open <http://127.0.0.1:8000/docs> and confirm Swagger UI loads.
 6. Verify callback generation and inbox view.
+7. Confirm `<http://127.0.0.1:8000/healthz>` returns `{"status": "ok"}`.
 
 ## 9. Debugging in VS Code
 
@@ -231,6 +234,12 @@ End-to-end tests (when configured):
 
 ```powershell
 npx playwright test
+```
+
+Docker Compose development stack:
+
+```powershell
+docker compose up --build
 ```
 
 ## 11. Common Local Issues

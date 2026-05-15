@@ -1,13 +1,13 @@
 # PayloadCatcher API Reference
 
-This document tracks the current API surface for PayloadCatcher.
+This document tracks the current implemented API surface for PayloadCatcher.
 
 Any API implementation, API behavior change, request or response shape change, status code change, authentication change, pagination change, or error-envelope change must be reflected in this file as part of the same change.
 
 This reference complements [route-contract.md](route-contract.md):
 
-- `docs/route-contract.md` defines the normative contract and minimal schema expectations.
-- `docs/api.md` is the developer-facing API reference that must stay aligned with the implemented behavior.
+- `docs/route-contract.md` defines the normative product contract and minimal schema expectations.
+- `docs/api.md` is the developer-facing reference for what the repository currently implements.
 
 Swagger and OpenAPI documentation are also required parts of the API surface:
 
@@ -33,7 +33,7 @@ Swagger and OpenAPI documentation are also required parts of the API surface:
 - `clsid` is a lowercase UUIDv4 string.
 - Callback URLs remain valid for 24 hours and rotate after expiration.
 
-## Endpoints
+## Current Implemented Endpoints
 
 ## Interactive API Documentation
 
@@ -45,6 +45,27 @@ Required behavior:
 - OpenAPI JSON is served at `/openapi.json`.
 - Route summaries, descriptions, request models, response models, error responses, and auth-related inputs are declared so they render correctly in Swagger.
 - API changes are documented both in generated Swagger output and in `docs/api.md`.
+
+### GET /healthz
+
+Return a lightweight process health signal for local development, Docker health checks, and orchestration probes.
+
+Response shape:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+Notes:
+
+- This route is operational and not part of the public webhook contract.
+- It appears in Swagger and OpenAPI during local development on port `8000`.
+
+### Planned Product Endpoints
+
+The routes below are defined by the current PayloadCatcher contract and must stay aligned with [route-contract.md](route-contract.md) and the generated Swagger schema once implemented.
 
 ### GET /
 
