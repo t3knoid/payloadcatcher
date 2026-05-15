@@ -180,20 +180,19 @@ Indexes:
 - `source_ip` INET/TEXT NOT NULL
 - `referer_url` TEXT NULL
 - `user_agent` TEXT NULL
-- `browser_type` TEXT NULL
-- `device_type` TEXT NULL
-- `language` TEXT NULL
-- `timezone` TEXT NULL
+- `browser` TEXT NULL
+- `device` TEXT NULL
+- `lang` TEXT NULL
+- `tz` TEXT NULL
 - `locality` TEXT NULL
 - `headers_json` JSONB/TEXT NOT NULL
 - `gps_lat` NUMERIC NULL
 - `gps_lng` NUMERIC NULL
-- `gps_consent` BOOLEAN NOT NULL DEFAULT FALSE
+- `consent` BOOLEAN NOT NULL DEFAULT FALSE
 
 Indexes:
 
-- index on `inbox_id`
-- index on `visited_at`
+- index on `inbox_id, visited_at`
 
 ### 3.3 webhook_events
 
@@ -204,7 +203,6 @@ Indexes:
 - `method` TEXT NOT NULL
 - `content_type` TEXT NULL
 - `headers_json` JSONB/TEXT NOT NULL
-- `payload_raw` JSONB/TEXT NOT NULL
 - `payload_raw` BYTEA/BLOB NOT NULL
 - `payload_size_bytes` BIGINT NOT NULL
 - `payload_encoding` TEXT NULL
