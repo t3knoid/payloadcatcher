@@ -1,5 +1,7 @@
 # PayloadCatcher
 
+![PayloadCatcher logo](docs/assets/logo_with_tag.png)
+
 PayloadCatcher is a provider-agnostic webhook inspection platform that lets you quickly capture, inspect, and debug webhook payloads from any source.
 
 ## Quick Start
