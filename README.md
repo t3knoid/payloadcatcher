@@ -41,6 +41,7 @@ No account signup or authentication required to get started.
 
 ## Documentation
 
+- **[API Reference](docs/api.md)** - Developer-facing API documentation that must stay aligned with implemented API behavior.
 - **[Requirements](docs/requirements.md)** — Functional and non-functional requirements, security model, and privacy rules.
 - **[Route Contract](docs/route-contract.md)** — API specifications, request/response shapes, and database schema.
 - **[UI Mock](docs/ui-mock.md)** — Visual layout guide for desktop and mobile views.

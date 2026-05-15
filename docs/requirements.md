@@ -10,6 +10,12 @@ The canonical capture and viewer URL patterns are:
 
 The www host is allowed for site entry, but callback and viewer URLs use the canonical payloadcat.ch host.
 
+Default serving requirements:
+
+- The site is served on port `8080` by default.
+- The deployment structure must support running behind a reverse proxy.
+- Reverse-proxy deployments must preserve canonical host behavior, forwarded scheme, forwarded host, and client IP handling.
+
 ## 2. Identifier and URL Rules
 
 1. `clsid` is always lowercase.
@@ -94,6 +100,20 @@ Default settings are configured through `.env` values, including:
 - `GEOIP_ENABLED`
 - `GPS_COLLECTION_ENABLED`
 - `COOKIE_SECURE`, `COOKIE_SAMESITE`, `COOKIE_MAX_AGE`
+- `PORT` (default `8080` for site serving)
+- trusted proxy and forwarded-header configuration values required for reverse-proxy deployments
+
+## 10A. Serving and Reverse Proxy Requirements
+
+1. The default site-facing application port is `8080`.
+2. The architecture must support deployment behind a reverse proxy such as Nginx, Caddy, Traefik, or equivalent infrastructure.
+3. Reverse-proxy support must preserve:
+   - canonical host behavior for `payloadcat.ch`
+   - forwarded scheme handling for HTTP to HTTPS termination
+   - trusted proxy-aware client IP normalization
+   - header forwarding required for request tracing and safe origin handling
+4. Reverse-proxy deployment must not break callback generation, viewer URLs, rate limiting, or auth verification behavior.
+5. Public URL generation must rely on configured external base URL values rather than raw socket host and port values.
 
 ## 11. Legal and Privacy Warning
 
@@ -157,6 +177,17 @@ Minimum requirements:
 5. Retry semantics are explicit for retryable responses:
    - 429 and 503 responses include `Retry-After` header and `error.details.retry_after_seconds`.
    - Non-retryable client errors do not include retry hints.
+
+## 15A. API Documentation Requirements
+
+1. The backend API must expose Swagger UI generated from the OpenAPI schema.
+2. Local development Swagger UI is served from the backend on port `8000`.
+3. The default local documentation URL is `<http://127.0.0.1:8000/docs>`.
+4. The default local OpenAPI schema URL is `<http://127.0.0.1:8000/openapi.json>`.
+5. All implemented API routes, request bodies, response models, status codes, and auth requirements must be represented in the generated OpenAPI schema.
+6. Swagger documentation must stay aligned with `docs/api.md` and `docs/route-contract.md`.
+7. Any API implementation or API modification is incomplete unless both the generated Swagger documentation and `docs/api.md` reflect the change.
+8. Site-facing serving defaults on port `8080` do not change the local backend API documentation requirement on port `8000`.
 
 ## 16. Listing Scale and Query Behavior
 
