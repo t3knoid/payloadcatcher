@@ -103,6 +103,7 @@ DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/payloadcatche
 ```
 
 The default site-facing serving port is `8080`. Local backend API development and Swagger access continue to use port `8000` unless your local stack intentionally consolidates them.
+The example `DATABASE_URL` uses `localhost` for native local development. When running through Docker Compose, the API container uses the `db` service hostname instead.
 
 Frontend local env example:
 
@@ -253,6 +254,10 @@ Docker Compose development stack:
 ```powershell
 docker compose up --build
 ```
+
+Compose note:
+
+- The Compose API service overrides `DATABASE_URL` to use the container-network database host `db`.
 
 ## 11. Common Local Issues
 

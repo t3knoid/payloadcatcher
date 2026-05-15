@@ -1,7 +1,9 @@
 from functools import lru_cache
+import json
+from typing import Annotated
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -22,14 +24,26 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://postgres:postgres@localhost:5432/payloadcatcher",
         alias="DATABASE_URL",
     )
-    cors_allow_origins: list[str] = Field(
+    cors_allow_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://127.0.0.1:5173"],
         alias="CORS_ALLOW_ORIGINS",
     )
-    trusted_proxies: list[str] = Field(
+    trusted_proxies: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["127.0.0.1", "::1"],
         alias="TRUSTED_PROXIES",
     )
+
+    @field_validator("cors_allow_origins", "trusted_proxies", mode="before")
+    @classmethod
+    def parse_list_env(cls, value: object) -> object:
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            if stripped.startswith("["):
+                return json.loads(stripped)
+            return [item.strip() for item in stripped.split(",") if item.strip()]
+        return value
 
 
 @lru_cache

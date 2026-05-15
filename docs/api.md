@@ -132,6 +132,11 @@ Non-2xx responses use a safe error envelope with:
 - `request_id`
 - optional safe `details`
 
+Current scaffold behavior:
+
+- Unhandled backend failures return a safe `500` response body with `error.code`, `error.message`, and `request_id`.
+- Error responses also include the `X-Request-ID` response header for correlation.
+
 Retryable responses such as `429` and `503` include:
 
 - `Retry-After` header

@@ -4,6 +4,8 @@ services:
       context: ./backend
     env_file:
       - ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/payloadcatcher
     ports:
       - "8000:8000"
     depends_on:
