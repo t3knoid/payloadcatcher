@@ -4,6 +4,10 @@
 
 This guide defines the local software stack and setup flow for developing, running, and debugging PayloadCatcher from source.
 
+PayloadCatcher development workflows are expected to support Windows, macOS, and Linux.
+
+PayloadCatcher supports native cross-platform development workflows on Windows, macOS, and Linux. Docker may be used for local infrastructure, integration testing, and deployment packaging, but core development workflows must not require Docker.
+
 ## 2. Target Development Stack
 
 Backend:
@@ -31,6 +35,12 @@ Tooling:
 - Git
 - VS Code
 - Docker Desktop (optional, recommended for local Postgres)
+
+Operating system support:
+
+- Development is expected to work on Windows, macOS, and Linux.
+- Production deployment may target Linux-based hosting.
+- Commands in this guide use PowerShell examples where helpful, but equivalent shell commands should remain feasible on other supported operating systems.
 
 ## 3. Recommended VS Code Extensions
 
@@ -66,6 +76,8 @@ payloadcatcher/
 ```
 
 If your local structure differs, adjust path-based commands accordingly.
+
+If you are not on Windows, use equivalent shell activation and path syntax for your environment.
 
 ## 5. Environment Configuration
 

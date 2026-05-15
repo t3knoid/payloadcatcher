@@ -15,6 +15,9 @@ Default serving requirements:
 - The site is served on port `8080` by default.
 - The deployment structure must support running behind a reverse proxy.
 - Reverse-proxy deployments must preserve canonical host behavior, forwarded scheme, forwarded host, and client IP handling.
+- Development workflows must support Windows, macOS, and Linux.
+- Production deployment must support Linux-based hosting and reverse-proxy operation.
+- PayloadCatcher supports native cross-platform development workflows on Windows, macOS, and Linux. Docker may be used for local infrastructure, integration testing, and deployment packaging, but core development workflows must not require Docker.
 
 ## 2. Identifier and URL Rules
 
@@ -114,6 +117,8 @@ Default settings are configured through `.env` values, including:
    - header forwarding required for request tracing and safe origin handling
 4. Reverse-proxy deployment must not break callback generation, viewer URLs, rate limiting, or auth verification behavior.
 5. Public URL generation must rely on configured external base URL values rather than raw socket host and port values.
+6. Local development and test workflows must remain executable on Windows, macOS, and Linux without requiring OS-specific application logic.
+7. Production runtime assumptions may target Linux-based hosting, but repository structure and tooling must remain cross-platform for development use.
 
 ## 11. Legal and Privacy Warning
 
