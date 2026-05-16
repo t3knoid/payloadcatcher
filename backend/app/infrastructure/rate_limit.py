@@ -19,6 +19,7 @@ class InMemoryRateLimiter:
         self.window_seconds = 60.0
         self._events: dict[str, deque[float]] = defaultdict(deque)
         self._lock = Lock()
+        self._last_cleanup_started_at = 0.0
 
     def check_and_consume(self, key: str) -> int | None:
         if self.limit_per_minute <= 0:
@@ -28,6 +29,7 @@ class InMemoryRateLimiter:
         window_start = now - self.window_seconds
 
         with self._lock:
+            self._cleanup_stale_keys(window_start, now)
             events = self._events[key]
             while events and events[0] <= window_start:
                 events.popleft()
@@ -38,6 +40,21 @@ class InMemoryRateLimiter:
 
             events.append(now)
             return None
+
+    def _cleanup_stale_keys(self, window_start: float, now: float) -> None:
+        if now - self._last_cleanup_started_at < self.window_seconds:
+            return
+
+        self._last_cleanup_started_at = now
+        expired_keys: list[str] = []
+        for key, events in self._events.items():
+            while events and events[0] <= window_start:
+                events.popleft()
+            if not events:
+                expired_keys.append(key)
+
+        for key in expired_keys:
+            self._events.pop(key, None)
 
 
 @lru_cache
