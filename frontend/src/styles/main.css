@@ -332,10 +332,16 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .callback-card,
-  .shell__header {
+  .callback-card {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .shell__header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
   .shell__brand-block {
@@ -352,7 +358,9 @@ a {
   }
 
   .shell__status {
-    align-self: flex-start;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    margin-top: -15px;
   }
 
   .shell__logo {
