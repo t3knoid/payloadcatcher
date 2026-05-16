@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 
 import { ApiClientError, apiClient } from '@/api/api-client';
-import type { BootstrapResponse, InboxEventDetail, InboxEventSummary, InboxResponse } from '@/types/api';
+import type { BootstrapRequest, BootstrapResponse, InboxEventDetail, InboxEventSummary, InboxResponse } from '@/types/api';
 
 const DEFAULT_LIMIT = 50;
 
@@ -172,12 +172,12 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   };
 
-  const bootstrapHome = async () => {
+  const bootstrapHome = async (metadata?: BootstrapRequest) => {
     loading.value = true;
     error.value = null;
 
     try {
-      const payload = await apiClient.bootstrapInbox();
+      const payload = await apiClient.bootstrapInbox(metadata);
       bootstrap.value = payload;
       activeClsid.value = payload.clsid;
       await loadInbox(payload.clsid);

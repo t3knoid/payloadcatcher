@@ -159,6 +159,7 @@ class InboxProvisioningService:
         source_ip: str,
     ) -> None:
         user_agent = request.headers.get("user-agent")
+        gps_lat, gps_lng, gps_consent = self._resolve_gps_capture(query)
         visit = VisitMetadata(
             inbox_id=inbox.id,
             visited_at=now,
@@ -169,9 +170,11 @@ class InboxProvisioningService:
             device=self._detect_device(user_agent),
             lang=self._primary_language(request.headers.get("accept-language")),
             tz=query.timezone,
-            locality=None,
+            locality=self._resolve_locality(request),
             headers_json=self._sanitized_headers(request),
-            consent=False,
+            gps_lat=gps_lat,
+            gps_lng=gps_lng,
+            consent=gps_consent,
         )
         self.session.add(visit)
 
@@ -182,6 +185,28 @@ class InboxProvisioningService:
             if value:
                 sanitized[header_name] = value
         return sanitized
+
+    def _resolve_locality(self, request: Request) -> str | None:
+        header_name = self.settings.locality_header_name
+        if not header_name:
+            return None
+        client_host = request.client.host if request.client else None
+        if client_host not in self.settings.trusted_proxies:
+            return None
+        locality = request.headers.get(header_name)
+        if not locality:
+            return None
+        normalized = " ".join(locality.strip().split())
+        if not normalized:
+            return None
+        return normalized[:128]
+
+    def _resolve_gps_capture(self, query: ProvisionInboxQuery) -> tuple[float | None, float | None, bool]:
+        if not query.gps_consent:
+            return None, None, False
+        if not self.settings.gps_collection_enabled:
+            return None, None, False
+        return query.gps_lat, query.gps_lng, True
 
     def _build_hook_url(self, clsid: str) -> str:
         return f"{self.settings.base_url.rstrip('/')}/hook/{clsid}"

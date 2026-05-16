@@ -44,7 +44,7 @@ Current behavior:
 - Creates a new inbox and callback URL on first visit.
 - Reuses the same callback URL while the cookie-bound inbox is still inside the 24-hour TTL.
 - Rotates to a new callback URL after expiration.
-- Captures visit metadata for source IP, user-agent, referer, accept-language, and optional timezone hint.
+- Captures visit metadata for source IP, user-agent, browser and device hints, referer, primary language, optional timezone hint, optional trusted-proxy locality header, and GPS coordinates only after explicit opt-in.
 - Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
 - Sets a session cookie with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
 - Treats source IP as a risk signal during active-session reuse and logs source-IP changes while preserving cookie-first continuity.
@@ -55,6 +55,9 @@ Request details:
 - Method: `GET`
 - Optional query params:
   - `timezone`: browser-provided timezone hint for visit metadata capture
+  - `gps_consent`: explicit opt-in flag for precise GPS collection
+  - `gps_lat`: optional latitude captured only when `gps_consent=true`
+  - `gps_lng`: optional longitude captured only when `gps_consent=true`
 
 Response shape:
 
@@ -72,6 +75,9 @@ Notes:
 
 - This route appears in Swagger and OpenAPI during local development on port `8000`.
 - The callback URL always uses the canonical hook pattern.
+- The homepage privacy notice is expected to render before this request runs on first visit so browser metadata collection is disclosed at collection time.
+- Locality capture is best-effort and uses the configured `LOCALITY_HEADER_NAME` only when the incoming client is a trusted proxy.
+- GPS coordinates are stored only after explicit opt-in and may remain empty when the browser declines or cannot provide geolocation.
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
 - Safe `500` error envelopes continue to apply to unhandled failures.
 

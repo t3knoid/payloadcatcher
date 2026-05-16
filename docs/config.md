@@ -18,6 +18,8 @@ Use the values in this reference together with [install.md](install.md) and [dev
 | `RATE_LIMIT_PER_MINUTE` | `60` | `integer` | Per-minute request budget used by the API rate limiting logic. |
 | `HOOK_PAYLOAD_MAX_BYTES` | `1048576` | `integer` | Maximum accepted webhook request body size in bytes. |
 | `VIEWER_PAYLOAD_PREVIEW_CHARS` | `4096` | `integer` | Maximum preview length used for inbox listing payload snippets. |
+| `GPS_COLLECTION_ENABLED` | `true` | `boolean` | Controls whether explicit browser GPS opt-in requests are persisted in visit metadata. |
+| `LOCALITY_HEADER_NAME` | `x-geo-city` | `header name string or empty` | Trusted-proxy header used for best-effort locality capture. Set it to an empty value to disable locality header ingestion. |
 | `HEADER_ALLOWLIST` | `content-type,user-agent,referer,accept-language` | `comma-delimited string list` | Request headers that are retained for viewer-safe metadata display. |
 | `CORS_ALLOW_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | `comma-delimited origin list` | Explicit browser origins allowed to call the backend API through CORS. |
 | `CORS_ALLOW_ORIGIN_REGEX` | `^https?://(?:localhost\|127\.0\.0\.1):(5173\|4173)$` | `regex string` | Regex-based CORS origin rule used for loopback development hosts. |
@@ -41,4 +43,5 @@ Use the values in this reference together with [install.md](install.md) and [dev
 | Local loopback access | `http://127.0.0.1:5173` and `http://localhost:5173` are covered by the explicit origin list and loopback regex. |
 | Local machine-IP access | When the frontend is opened on the same machine by IP, keep `VITE_API_BASE_URL` aligned with the reachable backend origin and allow the frontend origin with `CORS_ALLOW_ORIGIN_NETWORK`. |
 | Cross-device development | When another device loads the frontend over the network, bind the backend to `0.0.0.0`, use a reachable machine-IP API base URL, and allow the frontend origin network explicitly. |
+| Visit locality capture | `LOCALITY_HEADER_NAME` is read only from clients listed in `TRUSTED_PROXIES`; use it with a reverse proxy that injects sanitized IP-geo locality data. |
 | Example files | The tables above are seeded from [backend/.env.example](../backend/.env.example) and [frontend/.env.example](../frontend/.env.example). |

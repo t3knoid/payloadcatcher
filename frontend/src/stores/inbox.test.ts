@@ -226,4 +226,32 @@ describe('inbox store', () => {
     expect(store.selectedEventDetail).toBeNull();
     expect(store.detailError).toBe('Unable to load inbox data.');
   });
+
+  it('passes consent-aware metadata when bootstrapping the home inbox', async () => {
+    const store = useInboxStore();
+
+    bootstrapInbox.mockResolvedValueOnce({
+      clsid: CLSID,
+      callback_url: `https://payloadcat.ch/hook/${CLSID}`,
+      viewer_url: `https://payloadcat.ch/inbox/${CLSID}`,
+      expires_at: '2026-05-16T12:00:00Z',
+      new_session: true,
+    });
+    getInbox.mockResolvedValueOnce(firstPage);
+    getInboxEventDetail.mockResolvedValueOnce(firstDetail);
+
+    await store.bootstrapHome({
+      timezone: 'America/New_York',
+      gpsConsent: true,
+      gpsLat: 35.77959,
+      gpsLng: -78.63818,
+    });
+
+    expect(bootstrapInbox).toHaveBeenCalledWith({
+      timezone: 'America/New_York',
+      gpsConsent: true,
+      gpsLat: 35.77959,
+      gpsLng: -78.63818,
+    });
+  });
 });

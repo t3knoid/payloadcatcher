@@ -7,6 +7,13 @@ export interface ApiErrorEnvelope {
   request_id: string;
 }
 
+export interface BootstrapRequest {
+  timezone?: string;
+  gpsConsent?: boolean;
+  gpsLat?: number;
+  gpsLng?: number;
+}
+
 export interface BootstrapResponse {
   clsid: string;
   callback_url: string;

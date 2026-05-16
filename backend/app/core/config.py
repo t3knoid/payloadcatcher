@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = Field(default=60, alias="RATE_LIMIT_PER_MINUTE")
     hook_payload_max_bytes: int = Field(default=1048576, alias="HOOK_PAYLOAD_MAX_BYTES")
     viewer_payload_preview_chars: int = Field(default=4096, ge=4, alias="VIEWER_PAYLOAD_PREVIEW_CHARS")
+    gps_collection_enabled: bool = Field(default=True, alias="GPS_COLLECTION_ENABLED")
+    locality_header_name: str | None = Field(default="x-geo-city", alias="LOCALITY_HEADER_NAME")
     header_allowlist: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["content-type", "user-agent", "referer", "accept-language"],
         alias="HEADER_ALLOWLIST",
@@ -88,6 +90,16 @@ class Settings(BaseSettings):
         if normalized not in {"lax", "strict", "none"}:
             raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
         return normalized
+
+    @field_validator("locality_header_name", mode="before")
+    @classmethod
+    def normalize_locality_header_name(cls, value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            return normalized or None
+        return value
 
 
 @lru_cache

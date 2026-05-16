@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import HomeView from '@/views/HomeView.vue';
 import InboxView from '@/views/InboxView.vue';
+import PrivacyView from '@/views/PrivacyView.vue';
 
 export const buildRouter = () => {
   return createRouter({
@@ -17,6 +18,11 @@ export const buildRouter = () => {
         name: 'inbox',
         component: InboxView,
         props: true,
+      },
+      {
+        path: '/privacy',
+        name: 'privacy',
+        component: PrivacyView,
       },
     ],
     scrollBehavior() {

@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from '@/config/runtime';
-import type { ApiErrorEnvelope, BootstrapResponse, InboxEventDetail, InboxResponse } from '@/types/api';
+import type { ApiErrorEnvelope, BootstrapRequest, BootstrapResponse, InboxEventDetail, InboxResponse } from '@/types/api';
 
 class ApiClientError extends Error {
   status: number;
@@ -54,8 +54,13 @@ const request = async <T>(path: string, init?: RequestInit, query?: Record<strin
 };
 
 export const apiClient = {
-  bootstrapInbox(): Promise<BootstrapResponse> {
-    return request<BootstrapResponse>('/');
+  bootstrapInbox(params?: BootstrapRequest): Promise<BootstrapResponse> {
+    return request<BootstrapResponse>('/', undefined, {
+      timezone: params?.timezone,
+      gps_consent: params?.gpsConsent,
+      gps_lat: params?.gpsLat,
+      gps_lng: params?.gpsLng,
+    });
   },
   getInbox(clsid: string, params?: { q?: string; cursor?: string | null; limit?: number }): Promise<InboxResponse> {
     return request<InboxResponse>(`/inbox/${clsid}`, undefined, params);

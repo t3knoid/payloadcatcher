@@ -333,6 +333,8 @@ test.describe('QA-011 inbox UI flows', () => {
     });
 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('privacy-notice')).toBeVisible();
+    await page.getByTestId('privacy-start-button').click();
     await expect(page.getByRole('button', { name: 'Copy callback URL' })).toContainText(HOOK_URL);
     await expect(page.getByText(`Viewer link: ${VIEWER_URL}`)).toBeVisible();
     await expect(page.getByTestId('request-req-003')).toBeVisible();

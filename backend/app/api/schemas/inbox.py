@@ -3,14 +3,42 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 
-class ProvisionInboxQuery(BaseModel):
+class VisitMetadataCaptureQuery(BaseModel):
     timezone: str | None = Field(
         default=None,
         description="Optional browser-provided timezone hint for visit metadata capture.",
     )
+    gps_consent: bool = Field(
+        default=False,
+        description="Whether the browser user explicitly opted in to precise GPS collection.",
+    )
+    gps_lat: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Optional browser geolocation latitude, collected only after explicit consent.",
+    )
+    gps_lng: float | None = Field(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Optional browser geolocation longitude, collected only after explicit consent.",
+    )
+
+    @model_validator(mode="after")
+    def validate_gps_pair(self) -> "VisitMetadataCaptureQuery":
+        if (self.gps_lat is None) != (self.gps_lng is None):
+            raise ValueError("gps_lat and gps_lng must be provided together")
+        if (self.gps_lat is not None or self.gps_lng is not None) and not self.gps_consent:
+            raise ValueError("gps_consent must be true when GPS coordinates are provided")
+        return self
+
+
+class ProvisionInboxQuery(VisitMetadataCaptureQuery):
+    pass
 
 
 class ProvisionInboxResponse(BaseModel):

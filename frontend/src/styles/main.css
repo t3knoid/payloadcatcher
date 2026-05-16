@@ -130,6 +130,98 @@ a {
   padding: 1.15rem 1.2rem;
 }
 
+.privacy-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.3rem;
+  border: 1px solid rgba(182, 75, 47, 0.18);
+  background:
+    linear-gradient(135deg, rgba(255, 249, 239, 0.96), rgba(255, 252, 247, 0.84)),
+    rgba(255, 255, 255, 0.76);
+}
+
+.privacy-card__copy {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.privacy-card__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  line-height: 1.1;
+}
+
+.privacy-card__body,
+.privacy-card__message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.privacy-card__consent {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+}
+
+.privacy-card__consent input {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+
+.privacy-card__consent small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+}
+
+.privacy-card__link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.privacy-card__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.privacy-page {
+  padding: 1.35rem;
+}
+
+.privacy-page__copy {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.privacy-page__title,
+.privacy-page__subtitle {
+  margin: 0;
+}
+
+.privacy-page__body,
+.privacy-page__list {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.privacy-page__list {
+  padding-left: 1.2rem;
+}
+
+.privacy-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
 .callback-card__text {
   min-width: 0;
 }
@@ -411,6 +503,10 @@ a {
   .callback-card {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .privacy-card__actions {
+    justify-content: stretch;
   }
 
   .shell__header {

@@ -9,6 +9,7 @@ import tempfile
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -189,6 +190,73 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
         ]
 
     assert sorted(source_ips) == ["198.51.100.8", "203.0.113.10"]
+
+
+def test_visit_metadata_persists_gps_consent_and_trusted_locality(monkeypatch) -> None:
+    first_seen = datetime(2026, 5, 15, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "app.services.inbox_provisioning.utc_now",
+        lambda: first_seen,
+    )
+    app, session_factory = _build_test_app(trusted_proxies=["testclient"])
+    client = TestClient(app, base_url="https://testserver")
+
+    response = client.get(
+        "/",
+        params={
+            "timezone": "America/New_York",
+            "gps_consent": "true",
+            "gps_lat": "35.77959",
+            "gps_lng": "-78.63818",
+        },
+        headers={
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/136.0.0.0 Safari/537.36",
+            "referer": "https://www.payloadcat.ch/privacy",
+            "accept-language": "en-US,en;q=0.9",
+            "x-geo-city": "Raleigh, NC",
+            "authorization": "Bearer secret",
+            "cookie": "session=secret",
+        },
+    )
+
+    assert response.status_code == 200
+
+    with session_factory() as session:
+        visit = session.scalar(select(VisitMetadata))
+
+    assert visit is not None
+    assert visit.tz == "America/New_York"
+    assert float(visit.gps_lat) == pytest.approx(35.77959)
+    assert float(visit.gps_lng) == pytest.approx(-78.63818)
+    assert visit.consent is True
+    assert visit.locality == "Raleigh, NC"
+    assert visit.headers_json == {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/136.0.0.0 Safari/537.36",
+        "referer": "https://www.payloadcat.ch/privacy",
+        "accept-language": "en-US,en;q=0.9",
+    }
+
+
+def test_visit_metadata_ignores_gps_without_explicit_consent() -> None:
+    app, session_factory = _build_test_app(trusted_proxies=["testclient"])
+    client = TestClient(app, base_url="https://testserver")
+
+    response = client.get(
+        "/",
+        headers={
+            "x-geo-city": "Raleigh, NC",
+        },
+    )
+
+    assert response.status_code == 200
+
+    with session_factory() as session:
+        visit = session.scalar(select(VisitMetadata))
+
+    assert visit is not None
+    assert visit.gps_lat is None
+    assert visit.gps_lng is None
+    assert visit.consent is False
 
 
 def test_openapi_includes_bootstrap_route() -> None:

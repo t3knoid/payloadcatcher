@@ -1,6 +1,7 @@
 from fastapi import Response
 import logging
 import pytest
+from starlette.requests import Request
 
 from app.api.errors import ApiError
 from app.core.config import Settings
@@ -80,3 +81,48 @@ def test_enforce_rate_limit_logs_violation(caplog) -> None:
     assert excinfo.value.status_code == 429
     assert excinfo.value.error_code == "rate_limited"
     assert "Bootstrap rate limit exceeded" in caplog.text
+
+
+def test_sanitized_headers_keep_only_allowlisted_values() -> None:
+    settings = Settings(_env_file=None, header_allowlist=["user-agent", "accept-language"])
+    service = InboxProvisioningService(session=None, settings=settings)
+    request = Request(
+        {
+            "type": "http",
+            "headers": [
+                (b"user-agent", b"Mozilla/5.0"),
+                (b"accept-language", b"en-US,en;q=0.9"),
+                (b"authorization", b"Bearer secret"),
+                (b"cookie", b"session=secret"),
+            ],
+        }
+    )
+
+    sanitized = service._sanitized_headers(request)
+
+    assert sanitized == {
+        "user-agent": "Mozilla/5.0",
+        "accept-language": "en-US,en;q=0.9",
+    }
+
+
+def test_resolve_locality_uses_trusted_proxy_header_only() -> None:
+    settings = Settings(_env_file=None, trusted_proxies=["127.0.0.1"], locality_header_name="x-geo-city")
+    service = InboxProvisioningService(session=None, settings=settings)
+    trusted_request = Request(
+        {
+            "type": "http",
+            "headers": [(b"x-geo-city", b"Raleigh, NC")],
+            "client": ("127.0.0.1", 4321),
+        }
+    )
+    untrusted_request = Request(
+        {
+            "type": "http",
+            "headers": [(b"x-geo-city", b"Raleigh, NC")],
+            "client": ("198.51.100.8", 4321),
+        }
+    )
+
+    assert service._resolve_locality(trusted_request) == "Raleigh, NC"
+    assert service._resolve_locality(untrusted_request) is None

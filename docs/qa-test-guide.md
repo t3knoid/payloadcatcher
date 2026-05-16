@@ -164,10 +164,10 @@ Purpose: verify metadata collection boundaries and privacy-visible behavior.
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-009-01 | Visit metadata captures only approved fields | API/Manual | blocked | Stored metadata matches the documented allowlist and categories. |
-| QA-009-02 | Sensitive headers are not stored or exposed | API/Manual | blocked | Raw secrets do not appear in persistence, logs, or public responses. |
-| QA-009-03 | GPS data is collected only after explicit consent | E2E/Manual | blocked | No GPS values are stored without opt-in. |
-| QA-009-04 | Privacy notice is visible before or at collection time | E2E/Manual | blocked | Operator-visible privacy notice appears as required. |
+| QA-009-01 | Visit metadata captures only approved fields | API/Manual | implemented | Stored metadata matches the documented allowlist, consent fields, and best-effort locality categories. |
+| QA-009-02 | Sensitive headers are not stored or exposed | API/Manual | implemented | Raw secrets do not appear in persistence, logs, or public responses. |
+| QA-009-03 | GPS data is collected only after explicit consent | E2E/Manual | implemented | No GPS values are stored without opt-in. |
+| QA-009-04 | Privacy notice is visible before or at collection time | E2E/Manual | implemented | Operator-visible privacy notice appears before the first inbox is provisioned in the browser. |
 | QA-009-05 | Public viewer redacts source IP details by default | API/E2E | implemented | Network identifiers remain masked in bearer-link views. |
 
 ## Suite QA-010 Abuse Controls, Deduplication, And Retention
@@ -218,8 +218,8 @@ Current automated coverage in the repository maps to these suites:
 | `backend/tests/test_app.py` | QA-001 |
 | `backend/tests/test_config.py` | QA-002 |
 | `frontend/src/config/runtime.test.ts` | QA-002 |
-| `backend/tests/test_inbox_service.py` | QA-004 |
-| `backend/tests/test_bootstrap_api.py` | QA-004 |
+| `backend/tests/test_inbox_service.py` | QA-004, QA-009 |
+| `backend/tests/test_bootstrap_api.py` | QA-004, QA-009 |
 | `backend/tests/test_inbox_viewer_service.py` | QA-006, QA-007 |
 | `backend/tests/test_inbox_viewer_api.py` | QA-006, QA-009, QA-010 |
 | `backend/tests/test_webhook_service.py` | QA-002, QA-005, QA-007 |
@@ -227,7 +227,8 @@ Current automated coverage in the repository maps to these suites:
 | `backend/tests/test_persistence_models.py` | QA-003 |
 | `backend/tests/test_migrations.py` | QA-003 |
 | `frontend/src/router/router.test.ts` | QA-011 |
-| `frontend/tests/e2e/inbox-ui.spec.ts` | QA-011 |
+| `frontend/src/views/HomeView.test.ts` | QA-009, QA-011 |
+| `frontend/tests/e2e/inbox-ui.spec.ts` | QA-009, QA-011 |
 
 ## 8. Verification Commands
 

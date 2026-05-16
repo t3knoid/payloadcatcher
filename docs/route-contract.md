@@ -9,6 +9,9 @@ Purpose: Provision or return the active callback URL for this visitor context.
 Query params:
 
 - `timezone` (optional, browser timezone hint for visit metadata capture)
+- `gps_consent` (optional, explicit opt-in flag for precise GPS collection)
+- `gps_lat` (optional, latitude captured only when `gps_consent=true`)
+- `gps_lng` (optional, longitude captured only when `gps_consent=true`)
 
 Response 200 shape:
 
@@ -29,9 +32,11 @@ Notes:
 - If expired, issue and return a new mapping.
 - `callback_url` always uses the canonical hook endpoint shape.
 - The response sets a cookie-bound session with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
-- Visit metadata capture includes source IP, user-agent, referer, accept-language, and the optional timezone hint.
+- Visit metadata capture includes source IP, user-agent, browser and device hints, referer, primary language, the optional timezone hint, best-effort trusted-proxy locality, and GPS only after explicit opt-in.
 - Requests are rate limited per source IP using `RATE_LIMIT_PER_MINUTE`.
 - If source IP changes while the session cookie remains valid, the callback URL stays stable and the source-IP change is treated as a risk signal for logging and abuse analysis.
+- Locality capture uses the configured `LOCALITY_HEADER_NAME` only when the request comes through a trusted proxy.
+- GPS coordinates must not be stored unless the caller explicitly sets `gps_consent=true`.
 
 Errors:
 

@@ -26,4 +26,10 @@ describe('router', () => {
     expect(result.query.cursor).toBe('cursor-next');
     expect(result.query.history).toBe('cursor-next');
   });
+
+  it('resolves the privacy route', () => {
+    const router = buildRouter();
+
+    expect(router.resolve('/privacy').name).toBe('privacy');
+  });
 });

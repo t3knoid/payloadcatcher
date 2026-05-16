@@ -94,12 +94,12 @@ CLEANUP_INTERVAL_HOURS=24
 RATE_LIMIT_PER_MINUTE=60
 HOOK_PAYLOAD_MAX_BYTES=1048576
 VIEWER_PAYLOAD_PREVIEW_CHARS=4096
+GPS_COLLECTION_ENABLED=true
+LOCALITY_HEADER_NAME=x-geo-city
 HEADER_ALLOWLIST=content-type,user-agent,accept-language,referer
 CORS_ALLOW_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
 CORS_ALLOW_ORIGIN_REGEX=^https?://(?:localhost|127\.0\.0\.1):(5173|4173)$
 CORS_ALLOW_ORIGIN_NETWORK=
-GEOIP_ENABLED=true
-GPS_COLLECTION_ENABLED=true
 COOKIE_SECURE=true
 COOKIE_SAMESITE=lax
 COOKIE_MAX_AGE=86400
@@ -124,6 +124,8 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 
 The frontend accepts the API base URL from `frontend/.env`, `frontend/.env.local`, or a runtime-injected `window.__PAYLOADCATCHER_CONFIG__` object. If no frontend env file is present while Vite is serving the app from `127.0.0.1:5173`, `localhost:5173`, `127.0.0.1:4173`, or `localhost:4173`, the frontend falls back to the same host on port `8000` for local API requests. If your backend uses a different origin, copy `frontend/.env.example` and set `VITE_API_BASE_URL` explicitly.
 Leave `CORS_ALLOW_ORIGIN_NETWORK` empty unless you open the frontend from a private-network machine IP. When needed, set it to the smallest practical CIDR, such as `192.168.0.22/32` for one host or `192.168.0.0/24` for a subnet. If you open the frontend from another device on the network, set `VITE_API_BASE_URL` to the machine IP on port `8000` and bind the backend to `0.0.0.0`.
+`LOCALITY_HEADER_NAME` should match a sanitized reverse-proxy IP-geo header only when that proxy is also listed in `TRUSTED_PROXIES`. Leave it empty to disable locality capture.
+The home route shows a privacy notice before first-visit provisioning. If the user opts in to precise location access, the frontend sends `gps_consent=true` and includes GPS coordinates only when the browser returns them.
 
 Never commit secrets in local env files.
 
@@ -212,7 +214,7 @@ API documentation endpoints during local development:
 Swagger is the required interactive API documentation surface for local development. Keep FastAPI route metadata, request models, response models, and status code declarations accurate so the generated docs stay aligned with `docs/api.md`.
 
 The initial backend scaffold exposes the operational health route at `<http://127.0.0.1:8000/healthz>` in addition to Swagger and OpenAPI endpoints.
-The backend also exposes `GET /` for cookie-backed inbox provisioning and callback URL reuse.
+The backend also exposes `GET /` for cookie-backed inbox provisioning and callback URL reuse after the frontend privacy notice is acknowledged.
 The hook ingress path `POST /hook/{clsid}` accepts provider-agnostic payloads, acknowledges quickly, and persists in a background task.
 The viewer path `GET /inbox/{clsid}` exposes bearer-style inbox browsing with safe previews, search, pagination, and masked network identifiers.
 
