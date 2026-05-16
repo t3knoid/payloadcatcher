@@ -87,7 +87,7 @@ class InboxProvisioningService:
         )
 
     def normalize_source_ip(self, client_host: str | None, forwarded_for: str | None) -> str:
-        if client_host and client_host in self.settings.trusted_proxies and forwarded_for:
+        if client_host and self.settings.is_trusted_proxy(client_host) and forwarded_for:
             first_forwarded = forwarded_for.split(",", maxsplit=1)[0].strip()
             if self._is_valid_ip_address(first_forwarded):
                 return first_forwarded
@@ -223,7 +223,7 @@ class InboxProvisioningService:
         if not header_name:
             return None
         client_host = request.client.host if request.client else None
-        if client_host not in self.settings.trusted_proxies:
+        if not self.settings.is_trusted_proxy(client_host):
             return None
         locality = request.headers.get(header_name)
         if not locality:

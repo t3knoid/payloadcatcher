@@ -40,6 +40,17 @@ def test_normalize_source_ip_honors_forwarded_for_only_from_trusted_proxy() -> N
     assert untrusted_ip == "198.51.100.8"
 
 
+def test_normalize_source_ip_honors_forwarded_for_from_trusted_proxy_cidr() -> None:
+    settings = Settings(_env_file=None, trusted_proxies=["127.0.0.0/24", "::1"])
+    service = InboxProvisioningService(session=None, settings=settings)
+
+    trusted_ip = service.normalize_source_ip("127.0.0.42", "203.0.113.10, 10.0.0.1")
+    untrusted_ip = service.normalize_source_ip("198.51.100.8", "203.0.113.10, 10.0.0.1")
+
+    assert trusted_ip == "203.0.113.10"
+    assert untrusted_ip == "198.51.100.8"
+
+
 def test_normalize_source_ip_falls_back_when_forwarded_for_is_invalid() -> None:
     settings = Settings(_env_file=None, trusted_proxies=["127.0.0.1", "::1"])
     service = InboxProvisioningService(session=None, settings=settings)
@@ -126,3 +137,17 @@ def test_resolve_locality_uses_trusted_proxy_header_only() -> None:
 
     assert service._resolve_locality(trusted_request) == "Raleigh, NC"
     assert service._resolve_locality(untrusted_request) is None
+
+
+def test_resolve_locality_uses_trusted_proxy_cidr() -> None:
+    settings = Settings(_env_file=None, trusted_proxies=["127.0.0.0/24"], locality_header_name="x-geo-city")
+    service = InboxProvisioningService(session=None, settings=settings)
+    trusted_request = Request(
+        {
+            "type": "http",
+            "headers": [(b"x-geo-city", b"Raleigh, NC")],
+            "client": ("127.0.0.42", 4321),
+        }
+    )
+
+    assert service._resolve_locality(trusted_request) == "Raleigh, NC"

@@ -101,6 +101,25 @@ class Settings(BaseSettings):
             return normalized or None
         return value
 
+    def is_trusted_proxy(self, host: str | None) -> bool:
+        if not host:
+            return False
+
+        try:
+            parsed_host = ipaddress.ip_address(host)
+        except ValueError:
+            return host in self.trusted_proxies
+
+        for configured_proxy in self.trusted_proxies:
+            try:
+                if parsed_host in ipaddress.ip_network(configured_proxy, strict=False):
+                    return True
+            except ValueError:
+                if configured_proxy == host:
+                    return True
+
+        return False
+
 
 @lru_cache
 def get_settings() -> Settings:
