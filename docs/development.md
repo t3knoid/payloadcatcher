@@ -236,6 +236,14 @@ npx playwright install chromium
 npm run dev
 ```
 
+`npm install` installs the frontend runtime and development tooling declared in `frontend/package.json`, including the dependencies required for linting and tests such as `eslint`, `eslint-plugin-vue`, `vue-eslint-parser`, `vitest`, `jsdom`, `@vue/test-utils`, and `@playwright/test`.
+
+If `npm run lint`, `npm run test`, or `npm run test:e2e` fails because a package cannot be resolved after you pull dependency changes, rerun `npm install` from `frontend/`. For a clean lockfile-based reinstall, remove `node_modules` and run:
+
+```bash
+npm ci
+```
+
 Frontend quality checks:
 
 ```bash
@@ -384,9 +392,11 @@ Compose note:
    - Confirm DATABASE_URL and that Postgres is running.
 2. CORS/API errors in frontend:
    - Confirm VITE_API_BASE_URL points to backend URL.
-3. Missing callback data in viewer:
+3. Missing frontend lint or test packages:
+  Run `npm install` in `frontend/` to install dev dependencies from `package.json`. If the workspace dependency tree is stale or corrupted, remove `node_modules` and run `npm ci`. `npm run lint` requires the Vue ESLint stack, including `vue-eslint-parser`.
+4. Missing callback data in viewer:
    - Confirm backend worker/background path is active and no payload-size rejection occurred.
-4. Signature auth test failures:
+5. Signature auth test failures:
    - Confirm timestamp skew window, header names, and signing algorithm.
 
 ## 12. Security Notes for Development
