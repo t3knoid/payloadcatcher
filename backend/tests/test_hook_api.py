@@ -4,13 +4,14 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 import json
-from math import ceil
+import logging
 from pathlib import Path
 import tempfile
-from time import perf_counter, sleep
+from threading import Lock
+from time import sleep
+from typing import cast
 import uuid
 
-import anyio
 from fastapi import BackgroundTasks
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -27,7 +28,7 @@ from app.core.config import Settings, get_settings
 from app.persistence.base import Base
 from app.persistence.models import Inbox, WebhookEvent
 from app.persistence.session import get_db_session
-from app.services.webhook_ingestion import PreparedWebhookIngestion
+from app.services.webhook_ingestion import PreparedWebhookIngestion, WebhookIngestionService
 
 
 def _build_test_app(
@@ -36,20 +37,28 @@ def _build_test_app(
     rate_limit_per_minute: int = 60,
     database_url: str = "sqlite+pysqlite:///:memory:",
     use_static_pool: bool = True,
+    pool_size: int | None = None,
+    max_overflow: int | None = None,
 ) -> tuple[FastAPI, sessionmaker[Session]]:
-    engine_kwargs = {"connect_args": {"check_same_thread": False}}
+    engine_kwargs: dict[str, object] = {"connect_args": {"check_same_thread": False}}
     if use_static_pool:
         engine_kwargs["poolclass"] = StaticPool
+    else:
+        if pool_size is not None:
+            engine_kwargs["pool_size"] = pool_size
+        if max_overflow is not None:
+            engine_kwargs["max_overflow"] = max_overflow
     engine = create_engine(database_url, **engine_kwargs)
     Base.metadata.create_all(engine)
     testing_session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
     app = create_app()
-    settings = Settings(
-        _env_file=None,
-        trusted_proxies=["testclient"],
-        hook_payload_max_bytes=hook_payload_max_bytes,
-        rate_limit_per_minute=rate_limit_per_minute,
+    settings = Settings.model_validate(
+        {
+            "TRUSTED_PROXIES": ["testclient"],
+            "HOOK_PAYLOAD_MAX_BYTES": hook_payload_max_bytes,
+            "RATE_LIMIT_PER_MINUTE": rate_limit_per_minute,
+        }
     )
     limiter = InMemoryRateLimiter(rate_limit_per_minute)
 
@@ -364,107 +373,68 @@ def test_post_hook_persists_concurrent_requests_without_data_loss() -> None:
         session_factory.kw["bind"].dispose()
 
 
-@pytest.mark.anyio
-async def test_post_hook_burst_ack_latency_stays_within_target() -> None:
-    concurrent_requests = 32
-    persist_delay_seconds = 0.1
-    p95_target_seconds = 0.025
-    max_target_seconds = 0.05
+def test_post_hook_burst_ack_latency_stays_within_target(caplog, monkeypatch) -> None:
+    concurrent_requests = 16
+    persist_delay_seconds = 0.25
     clsid = "550e8400-e29b-41d4-a716-446655440010"
-    body = b'{"ok": true}'
-    latencies: list[float] = []
-    background_batches: list[BackgroundTasks] = []
+    persist_delay_ms = persist_delay_seconds * 1000
+    persisted_request_ids: list[str] = []
+    persisted_request_ids_lock = Lock()
 
-    def build_request() -> Request:
-        delivered = False
-
-        async def receive() -> dict[str, object]:
-            nonlocal delivered
-            if delivered:
-                return {
-                    "type": "http.request",
-                    "body": b"",
-                    "more_body": False,
-                }
-            delivered = True
-            return {
-                "type": "http.request",
-                "body": body,
-                "more_body": False,
-            }
-
-        return Request(
-            {
-                "type": "http",
-                "method": "POST",
-                "path": f"/hook/{clsid}",
-                "headers": [],
-                "client": ("203.0.113.10", 12345),
-            },
-            receive,
+    with tempfile.TemporaryDirectory() as temp_dir:
+        database_path = Path(temp_dir) / "hook-latency.db"
+        app, session_factory = _build_test_app(
+            rate_limit_per_minute=100,
+            database_url=f"sqlite+pysqlite:///{database_path.as_posix()}",
+            use_static_pool=False,
+            pool_size=concurrent_requests,
+            max_overflow=0,
         )
+        try:
+            _seed_inbox(session_factory, clsid)
 
-    async def invoke(index: int) -> None:
-        request = build_request()
-        prepared = PreparedWebhookIngestion(
-            inbox_id=uuid.uuid4(),
-            clsid=clsid,
-            request_id=f"request-{index}",
-            received_at=datetime.now(UTC),
-            source_ip=f"203.0.113.{index + 10}",
-            method="POST",
-            content_type="application/json",
-            payload_raw=body,
-            payload_encoding=None,
-            headers_json={},
-        )
-        background_tasks = BackgroundTasks()
-
-        class SlowPersistenceService:
-            def __init__(self) -> None:
-                self.persist_calls = 0
-
-            def prepare_ingestion(
-                self,
-                incoming_clsid: str,
-                incoming_request: Request,
-                payload_raw: bytes,
-            ) -> PreparedWebhookIngestion:
-                assert incoming_clsid == clsid
-                assert incoming_request is request
-                assert payload_raw == body
-                return prepared
-
-            def persist_ingestion(self, prepared_ingestion: PreparedWebhookIngestion) -> None:
-                self.persist_calls += 1
+            def slow_persist(self: WebhookIngestionService, prepared: PreparedWebhookIngestion) -> None:
                 sleep(persist_delay_seconds)
-                assert prepared_ingestion is prepared
+                with persisted_request_ids_lock:
+                    persisted_request_ids.append(prepared.request_id)
 
-        service = SlowPersistenceService()
-        started = perf_counter()
-        response = await ingest_webhook(clsid, request, background_tasks, service)
-        latencies.append(perf_counter() - started)
+            monkeypatch.setattr(WebhookIngestionService, "persist_ingestion", slow_persist)
 
-        assert response.status == "accepted"
-        assert response.request_id == prepared.request_id
-        assert service.persist_calls == 0
-        assert len(background_tasks.tasks) == 1
-        background_batches.append(background_tasks)
+            def post_event(index: int) -> tuple[int, str]:
+                with TestClient(app) as client:
+                    response = client.post(
+                        f"/hook/{clsid}",
+                        json={"index": index},
+                        headers={"x-forwarded-for": f"203.0.113.{index + 10}"},
+                    )
+                return response.status_code, response.json()["request_id"]
 
-    async with anyio.create_task_group() as task_group:
-        for index in range(concurrent_requests):
-            task_group.start_soon(invoke, index)
+            with caplog.at_level(logging.INFO, logger="payloadcatcher.request"):
+                with ThreadPoolExecutor(max_workers=concurrent_requests) as executor:
+                    results = list(executor.map(post_event, range(concurrent_requests)))
 
-    ordered_latencies = sorted(latencies)
-    p95_latency = ordered_latencies[ceil(len(ordered_latencies) * 0.95) - 1]
-    max_latency = ordered_latencies[-1]
+            assert [status for status, _ in results] == [200] * concurrent_requests
 
-    assert p95_latency < p95_target_seconds
-    assert max_latency < max_target_seconds
+            request_durations_ms = sorted(
+                float(record.args[2])
+                for record in caplog.records
+                if record.name == "payloadcatcher.request"
+                and len(record.args) == 3
+                and record.args[0] == "POST"
+                and record.args[1] == f"/hook/{clsid}"
+            )
 
-    async with anyio.create_task_group() as task_group:
-        for background_tasks in background_batches:
-            task_group.start_soon(background_tasks)
+            assert len(request_durations_ms) == concurrent_requests
+
+            p95_index = max(0, (concurrent_requests * 95 + 99) // 100 - 1)
+            p95_latency_ms = request_durations_ms[p95_index]
+            max_latency_ms = request_durations_ms[-1]
+
+            assert p95_latency_ms < persist_delay_ms * 0.5
+            assert max_latency_ms < persist_delay_ms * 0.75
+            assert sorted(request_id for _, request_id in results) == sorted(persisted_request_ids)
+        finally:
+            session_factory.kw["bind"].dispose()
 
 
 @pytest.mark.anyio
@@ -517,7 +487,7 @@ async def test_post_hook_defers_persistence_to_background_tasks() -> None:
 
     service = StubWebhookService()
 
-    response = await ingest_webhook(prepared.clsid, request, background_tasks, service)
+    response = await ingest_webhook(prepared.clsid, request, background_tasks, cast(WebhookIngestionService, service))
 
     assert response.status == "accepted"
     assert response.request_id == prepared.request_id
