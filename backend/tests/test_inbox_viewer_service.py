@@ -129,3 +129,47 @@ def test_mask_source_ip_and_truncate_preview() -> None:
     assert service.mask_source_ip("203.0.113.25") == "203.0.113.0/24"
     assert service.mask_source_ip("2001:db8::1234") == "2001:db8::/64"
     assert service.truncate_payload_yaml("1234567890ABC") == "1234567..."
+
+
+def test_get_inbox_view_search_uses_visible_preview_text() -> None:
+    session = _build_session()
+    clsid = "550e8400-e29b-41d4-a716-446655440111"
+    issued_at = datetime(2026, 5, 15, 12, 0, tzinfo=UTC)
+    inbox = Inbox(
+        clsid=clsid,
+        source_ip="198.51.100.20",
+        issued_at=issued_at,
+        expires_at=issued_at + timedelta(hours=24),
+    )
+    session.add(inbox)
+    session.flush()
+    session.add(
+        WebhookEvent(
+            inbox_id=inbox.id,
+            request_id="evt-truncated",
+            received_at=datetime(2026, 5, 15, 12, 4, tzinfo=UTC),
+            method="POST",
+            content_type="text/plain",
+            headers_json={},
+            payload_raw=b"plain",
+            payload_size_bytes=5,
+            payload_encoding=None,
+            payload_yaml="prefix-aaaaaaaaaaaaaaaaaaaa-needle",
+            source_ip="203.0.113.10",
+            dedup_key=None,
+            is_duplicate=False,
+        )
+    )
+    session.commit()
+    service = InboxViewerService(
+        session=session,
+        settings=Settings(_env_file=None, viewer_payload_preview_chars=10),
+        rate_limiter=None,
+    )
+
+    hidden_match = service.get_inbox_view(clsid, InboxViewerQuery(q="needle"), _build_request())
+    visible_match = service.get_inbox_view(clsid, InboxViewerQuery(q="prefix"), _build_request())
+
+    assert hidden_match.events == []
+    assert [event.request_id for event in visible_match.events] == ["evt-truncated"]
+    assert visible_match.events[0].payload_yaml == "prefix-..."

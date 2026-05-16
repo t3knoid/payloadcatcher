@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from app.core.config import Settings
 
 
@@ -28,3 +31,9 @@ def test_settings_include_hook_payload_limit_and_content_type_header_by_default(
         "referer",
         "accept-language",
     ]
+
+
+@pytest.mark.parametrize("value", [0, -1])
+def test_settings_reject_non_positive_viewer_payload_preview_chars(value: int) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, viewer_payload_preview_chars=value)

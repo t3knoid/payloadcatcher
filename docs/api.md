@@ -166,14 +166,14 @@ Current behavior:
 - Validates that `clsid` is a lowercase UUIDv4 before querying the inbox.
 - Rejects unknown or expired inbox identifiers with a safe `404` error envelope.
 - Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
-- Supports `q` search across `request_id`, request method, stored source IP, and stored payload preview text.
+- Supports `q` search across `request_id`, request method, stored source IP, and the visible public payload preview text.
 - Supports opaque cursor-based pagination through the `cursor` query param with page size `limit` default `50` and maximum `100`.
 - Sorts results deterministically by `received_at DESC, request_id DESC`.
 - Returns the canonical hook URL so direct viewer visits can still show the active callback URL.
 - Redacts viewer-facing source IPs to subnet form by default:
   - IPv4 is masked to `/24`
   - IPv6 is masked to `/64`
-- Returns stored payload preview text without reparsing the YAML, and truncates public previews to `VIEWER_PAYLOAD_PREVIEW_CHARS`.
+- Returns stored payload preview text without reparsing the YAML, and truncates public previews to the positive `VIEWER_PAYLOAD_PREVIEW_CHARS` limit.
 
 Request details:
 

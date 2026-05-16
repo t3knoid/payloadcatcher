@@ -124,10 +124,10 @@ Notes:
 
 - `events` powers the viewer list and supplies the preview content needed for initial payload rendering.
 - `next_token` is an opaque cursor derived from the last event in the current page.
-- Search matches request ID, method, stored source IP, and stored payload preview text.
+- Search matches request ID, method, stored source IP, and the visible payload preview text returned by the endpoint.
 - Sort order is stable by `received_at DESC, request_id DESC`.
 - Viewer-facing network identifiers remain masked by default.
-- Public preview text is truncated to `VIEWER_PAYLOAD_PREVIEW_CHARS`.
+- Public preview text is truncated to the positive `VIEWER_PAYLOAD_PREVIEW_CHARS` limit.
 - `limit` values above maximum return 400 with safe error envelope.
 
 Errors:

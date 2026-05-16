@@ -8,7 +8,7 @@ import json
 import uuid
 
 from fastapi import Depends, Request
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import String, and_, case, cast, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
@@ -152,8 +152,6 @@ class InboxViewerService:
         max_chars = self.settings.viewer_payload_preview_chars
         if len(payload_yaml) <= max_chars:
             return payload_yaml
-        if max_chars <= 3:
-            return payload_yaml[:max_chars]
         return payload_yaml[: max_chars - 3] + "..."
 
     def utc_now(self) -> datetime:
@@ -190,11 +188,12 @@ class InboxViewerService:
 
     def _build_search_filter(self, search_text: str):
         normalized = f"%{self._escape_like_pattern(search_text.lower())}%"
+        preview_text = func.lower(self._preview_expression())
         return or_(
             func.lower(WebhookEvent.request_id).like(normalized, escape="\\"),
             func.lower(WebhookEvent.method).like(normalized, escape="\\"),
             func.lower(WebhookEvent.source_ip).like(normalized, escape="\\"),
-            func.lower(WebhookEvent.payload_yaml).like(normalized, escape="\\"),
+            preview_text.like(normalized, escape="\\"),
         )
 
     def _escape_like_pattern(self, value: str) -> str:
@@ -229,6 +228,14 @@ class InboxViewerService:
         if value.tzinfo is None:
             return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
+
+    def _preview_expression(self):
+        max_chars = self.settings.viewer_payload_preview_chars
+        truncated_text = cast(func.substr(WebhookEvent.payload_yaml, 1, max_chars - 3), String) + literal("...")
+        return case(
+            (func.length(WebhookEvent.payload_yaml) <= max_chars, WebhookEvent.payload_yaml),
+            else_=truncated_text,
+        )
 
 
 def get_inbox_viewer_service(
