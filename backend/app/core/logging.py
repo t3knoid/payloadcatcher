@@ -1,6 +1,5 @@
 import contextvars
 import logging
-from logging.config import dictConfig
 
 request_id_context: contextvars.ContextVar[str] = contextvars.ContextVar(
     "request_id", default="-"
@@ -19,24 +18,16 @@ def configure_logging() -> None:
     if _configured:
         return
 
-    dictConfig(
-        {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "filters": {"request_id": {"()": RequestIdFilter}},
-            "formatters": {
-                "standard": {
-                    "format": "%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s"
-                }
-            },
-            "handlers": {
-                "default": {
-                    "class": "logging.StreamHandler",
-                    "formatter": "standard",
-                    "filters": ["request_id"],
-                }
-            },
-            "root": {"level": "INFO", "handlers": ["default"]},
-        }
-    )
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+
+    if not any(getattr(handler, "_payloadcatcher_default", False) for handler in root_logger.handlers):
+        default_handler = logging.StreamHandler()
+        default_handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s")
+        )
+        default_handler.addFilter(RequestIdFilter())
+        default_handler._payloadcatcher_default = True  # type: ignore[attr-defined]
+        root_logger.addHandler(default_handler)
+
     _configured = True

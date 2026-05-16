@@ -59,6 +59,8 @@ class WebhookIngestionService:
         self.rate_limiter = rate_limiter
         self.clock = clock or utc_now
         self.logger = logging.getLogger("payloadcatcher.hook")
+        self.logger.disabled = False
+        self.logger.propagate = True
 
     def prepare_ingestion(self, clsid: str, request: Request, payload_raw: bytes) -> PreparedWebhookIngestion:
         if self.session is None:
