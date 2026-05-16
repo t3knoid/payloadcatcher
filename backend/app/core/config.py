@@ -39,7 +39,7 @@ class Settings(BaseSettings):
         alias="TRUSTED_PROXIES",
     )
     session_cookie_name: str = Field(default="payloadcatcher_session", alias="SESSION_COOKIE_NAME")
-    cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
+    cookie_secure: bool = Field(default=True, alias="COOKIE_SECURE")
     cookie_samesite: str = Field(default="lax", alias="COOKIE_SAMESITE")
     cookie_max_age: int = Field(default=86400, alias="COOKIE_MAX_AGE")
 

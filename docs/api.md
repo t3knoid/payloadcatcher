@@ -45,7 +45,8 @@ Current behavior:
 - Reuses the same callback URL while the cookie-bound inbox is still inside the 24-hour TTL.
 - Rotates to a new callback URL after expiration.
 - Captures visit metadata for source IP, user-agent, referer, accept-language, and optional timezone hint.
-- Sets a session cookie with `HttpOnly` and `SameSite=Lax`; the `Secure` flag remains configuration-driven for local versus production environments.
+- Sets a session cookie with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
+- Treats source IP as a risk signal during active-session reuse and logs source-IP changes while preserving cookie-first continuity.
 
 Request details:
 

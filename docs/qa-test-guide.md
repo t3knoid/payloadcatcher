@@ -99,8 +99,8 @@ Purpose: verify first-visit inbox provisioning and 24-hour callback rotation beh
 | QA-004-01 | First visit provisions a lowercase UUIDv4 `clsid` | API/E2E | implemented | Response returns valid `clsid`, `callback_url`, `viewer_url`, `expires_at`, and `new_session=true`. |
 | QA-004-02 | Repeat visit within TTL returns the same callback URL | API/E2E | implemented | Existing unexpired callback remains stable and `new_session=false`. |
 | QA-004-03 | Expired callback rotates to a new `clsid` | API/E2E | implemented | A new callback is issued after expiration. |
-| QA-004-04 | Cookie-first session continuity works when source IP changes | API/E2E | blocked | Valid session cookie preserves the same callback unless abuse policy rotates it. |
-| QA-004-05 | Session cookie is issued with `HttpOnly` and `SameSite=Lax` semantics | Unit/API | implemented | Response issues the configured session cookie with safe defaults. |
+| QA-004-04 | Cookie-first session continuity works when source IP changes | API/E2E | implemented | Valid session cookie preserves the same callback and records the new normalized source IP for risk analysis. |
+| QA-004-05 | Session cookie is issued with `HttpOnly`, `Secure`, and `SameSite=Lax` semantics | Unit/API | implemented | Response issues the configured session cookie with secure defaults. |
 
 ## Suite QA-005 Hook Ingestion And Payload Acceptance
 

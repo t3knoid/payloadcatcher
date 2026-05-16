@@ -96,12 +96,18 @@ HOOK_PAYLOAD_MAX_BYTES=1048576
 HEADER_ALLOWLIST=content-type,user-agent,accept-language,referer
 GEOIP_ENABLED=true
 GPS_COLLECTION_ENABLED=true
-COOKIE_SECURE=false
+COOKIE_SECURE=true
 COOKIE_SAMESITE=lax
 COOKIE_MAX_AGE=86400
 SESSION_COOKIE_NAME=payloadcatcher_session
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/payloadcatcher
 ```
+
+Cookie note:
+
+- Session cookies use secure defaults in the application configuration.
+- If you intentionally run the backend over plain local HTTP for browser testing, set `COOKIE_SECURE=false` in your uncommitted local `.env` override.
+- Keep `COOKIE_SECURE=true` for shared, preview, and production-like environments.
 
 The default site-facing serving port is `8080`. Local backend API development and Swagger access continue to use port `8000` unless your local stack intentionally consolidates them.
 The example `DATABASE_URL` uses `localhost` for native local development. When running through Docker Compose, the API container uses the `db` service hostname instead.

@@ -28,8 +28,9 @@ Notes:
 - If an existing mapping is still valid (24h), return it.
 - If expired, issue and return a new mapping.
 - `callback_url` always uses the canonical hook endpoint shape.
-- The response sets a cookie-bound session with `HttpOnly` and `SameSite=Lax`; `Secure` remains environment-configurable.
+- The response sets a cookie-bound session with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
 - Visit metadata capture includes source IP, user-agent, referer, accept-language, and the optional timezone hint.
+- If source IP changes while the session cookie remains valid, the callback URL stays stable and the source-IP change is treated as a risk signal for logging and abuse analysis.
 
 ### 1.2 POST /hook/{clsid}
 

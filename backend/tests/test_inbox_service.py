@@ -1,14 +1,14 @@
 from fastapi import Response
+import logging
 
 from app.core.config import Settings
 from app.services.inbox_provisioning import InboxProvisioningService
 
 
-def test_bind_session_cookie_applies_secure_defaults_when_enabled() -> None:
+def test_bind_session_cookie_uses_secure_defaults() -> None:
     settings = Settings(
         _env_file=None,
         session_cookie_name="payloadcatcher_session",
-        cookie_secure=True,
         cookie_samesite="lax",
         cookie_max_age=86400,
     )
@@ -34,3 +34,18 @@ def test_normalize_source_ip_honors_forwarded_for_only_from_trusted_proxy() -> N
 
     assert trusted_ip == "203.0.113.10"
     assert untrusted_ip == "198.51.100.8"
+
+
+def test_reuse_policy_logs_source_ip_change_as_risk_signal(caplog) -> None:
+    settings = Settings(_env_file=None)
+    service = InboxProvisioningService(session=None, settings=settings)
+
+    with caplog.at_level(logging.INFO, logger="payloadcatcher.inbox"):
+        should_reuse = service.reuse_allowed_for_source_ip(
+            stored_source_ip="203.0.113.10",
+            current_source_ip="198.51.100.8",
+            clsid="550e8400-e29b-41d4-a716-446655440000",
+        )
+
+    assert should_reuse is True
+    assert "Source IP changed for active inbox" in caplog.text

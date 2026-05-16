@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import logging
 import re
 import uuid
 
@@ -33,16 +34,25 @@ class InboxProvisioningService:
         self.session = session
         self.settings = settings
         self.clock = clock or utc_now
+        self.logger = logging.getLogger("payloadcatcher.inbox")
 
     def provision_inbox(self, request: Request, query: ProvisionInboxQuery) -> ProvisionInboxResult:
         now = self.clock()
-        active_inbox = self._find_active_inbox(request.cookies.get(self.settings.session_cookie_name), now)
+        current_source_ip = self.normalize_source_ip(
+            request.client.host if request.client else None,
+            request.headers.get("x-forwarded-for"),
+        )
+        active_inbox = self._find_active_inbox(
+            request.cookies.get(self.settings.session_cookie_name),
+            now,
+            current_source_ip,
+        )
         new_session = active_inbox is None
 
         if active_inbox is None:
-            active_inbox = self._create_inbox(request, now)
+            active_inbox = self._create_inbox(current_source_ip, now)
 
-        self._record_visit_metadata(active_inbox, request, query, now)
+        self._record_visit_metadata(active_inbox, request, query, now, current_source_ip)
         self.session.commit()
 
         return ProvisionInboxResult(
@@ -71,21 +81,33 @@ class InboxProvisioningService:
                 return first_forwarded
         return client_host or "unknown"
 
-    def _find_active_inbox(self, clsid: str | None, now: datetime) -> Inbox | None:
+    def reuse_allowed_for_source_ip(self, stored_source_ip: str, current_source_ip: str, clsid: str) -> bool:
+        if stored_source_ip != current_source_ip:
+            self.logger.info(
+                "Source IP changed for active inbox %s: stored=%s current=%s",
+                clsid,
+                stored_source_ip,
+                current_source_ip,
+            )
+        return True
+
+    def _find_active_inbox(self, clsid: str | None, now: datetime, current_source_ip: str) -> Inbox | None:
         if not clsid:
             return None
 
         statement = select(Inbox).where(Inbox.clsid == clsid, Inbox.expires_at > now)
-        return self.session.scalar(statement)
+        inbox = self.session.scalar(statement)
+        if inbox is None:
+            return None
+        if not self.reuse_allowed_for_source_ip(inbox.source_ip, current_source_ip, inbox.clsid):
+            return None
+        return inbox
 
-    def _create_inbox(self, request: Request, now: datetime) -> Inbox:
+    def _create_inbox(self, source_ip: str, now: datetime) -> Inbox:
         ttl = timedelta(hours=self.settings.callback_ttl_hours)
         inbox = Inbox(
             clsid=str(uuid.uuid4()),
-            source_ip=self.normalize_source_ip(
-                request.client.host if request.client else None,
-                request.headers.get("x-forwarded-for"),
-            ),
+            source_ip=source_ip,
             issued_at=now,
             expires_at=now + ttl,
         )
@@ -99,15 +121,13 @@ class InboxProvisioningService:
         request: Request,
         query: ProvisionInboxQuery,
         now: datetime,
+        source_ip: str,
     ) -> None:
         user_agent = request.headers.get("user-agent")
         visit = VisitMetadata(
             inbox_id=inbox.id,
             visited_at=now,
-            source_ip=self.normalize_source_ip(
-                request.client.host if request.client else None,
-                request.headers.get("x-forwarded-for"),
-            ),
+            source_ip=source_ip,
             referer_url=request.headers.get("referer"),
             user_agent=user_agent,
             browser=self._detect_browser(user_agent),
