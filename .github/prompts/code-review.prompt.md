@@ -1,8 +1,13 @@
+---
+name: Code Review
+description: "Perform a code review of changes in the current branch using PayloadCatcher repository instructions and repository prompt rules, including required documentation updates."
+argument-hint: "Describe the feature, change set, ticket, or risk areas to review"
+agent: agent
+---
+
 # PayloadCatcher Code Review Prompt
 
 Use this prompt to run a focused review of a change set for PayloadCatcher.
-
-description: "Perform a code review of changes in the current branch using PayloadCatcher repository instructions and Cursor .mdc rules, including required documentation updates."
 
 ## Context
 
