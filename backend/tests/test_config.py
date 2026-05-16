@@ -4,6 +4,7 @@ from app.core.config import Settings
 def test_settings_parse_comma_delimited_list_env_values(monkeypatch) -> None:
     monkeypatch.setenv("CORS_ALLOW_ORIGINS", "http://127.0.0.1:5173, https://payloadcat.ch")
     monkeypatch.setenv("TRUSTED_PROXIES", "127.0.0.1,::1")
+    monkeypatch.setenv("HEADER_ALLOWLIST", "user-agent, referer, accept-language")
 
     settings = Settings(_env_file=None)
 
@@ -12,3 +13,4 @@ def test_settings_parse_comma_delimited_list_env_values(monkeypatch) -> None:
         "https://payloadcat.ch",
     ]
     assert settings.trusted_proxies == ["127.0.0.1", "::1"]
+    assert settings.header_allowlist == ["user-agent", "referer", "accept-language"]

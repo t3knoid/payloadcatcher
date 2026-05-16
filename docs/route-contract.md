@@ -6,14 +6,19 @@
 
 Purpose: Provision or return the active callback URL for this visitor context.
 
+Query params:
+
+- `timezone` (optional, browser timezone hint for visit metadata capture)
+
 Response 200 shape:
 
 ```json
 {
   "clsid": "550e8400-e29b-41d4-a716-446655440000",
-  "hook_url": "https://payloadcat.ch/hook/550e8400-e29b-41d4-a716-446655440000",
+  "callback_url": "https://payloadcat.ch/hook/550e8400-e29b-41d4-a716-446655440000",
   "viewer_url": "https://payloadcat.ch/inbox/550e8400-e29b-41d4-a716-446655440000",
-  "expires_at": "2026-05-16T12:00:00Z"
+  "expires_at": "2026-05-16T12:00:00Z",
+  "new_session": true
 }
 ```
 
@@ -22,6 +27,9 @@ Notes:
 - `clsid` is lowercase UUIDv4.
 - If an existing mapping is still valid (24h), return it.
 - If expired, issue and return a new mapping.
+- `callback_url` always uses the canonical hook endpoint shape.
+- The response sets a cookie-bound session with `HttpOnly` and `SameSite=Lax`; `Secure` remains environment-configurable.
+- Visit metadata capture includes source IP, user-agent, referer, accept-language, and the optional timezone hint.
 
 ### 1.2 POST /hook/{clsid}
 

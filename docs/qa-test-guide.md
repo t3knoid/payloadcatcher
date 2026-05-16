@@ -96,10 +96,11 @@ Purpose: verify first-visit inbox provisioning and 24-hour callback rotation beh
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-004-01 | First visit provisions a lowercase UUIDv4 `clsid` | API/E2E | blocked | Response returns valid `clsid`, `hook_url`, `viewer_url`, and `expires_at`. |
-| QA-004-02 | Repeat visit within TTL returns the same callback URL | API/E2E | blocked | Existing unexpired callback remains stable. |
-| QA-004-03 | Expired callback rotates to a new `clsid` | API/E2E | blocked | A new callback is issued after expiration. |
+| QA-004-01 | First visit provisions a lowercase UUIDv4 `clsid` | API/E2E | implemented | Response returns valid `clsid`, `callback_url`, `viewer_url`, `expires_at`, and `new_session=true`. |
+| QA-004-02 | Repeat visit within TTL returns the same callback URL | API/E2E | implemented | Existing unexpired callback remains stable and `new_session=false`. |
+| QA-004-03 | Expired callback rotates to a new `clsid` | API/E2E | implemented | A new callback is issued after expiration. |
 | QA-004-04 | Cookie-first session continuity works when source IP changes | API/E2E | blocked | Valid session cookie preserves the same callback unless abuse policy rotates it. |
+| QA-004-05 | Session cookie is issued with `HttpOnly` and `SameSite=Lax` semantics | Unit/API | implemented | Response issues the configured session cookie with safe defaults. |
 
 ## Suite QA-005 Hook Ingestion And Payload Acceptance
 
@@ -210,6 +211,8 @@ Current automated coverage in the repository maps to these suites:
 | --- | --- |
 | `backend/tests/test_app.py` | QA-001 |
 | `backend/tests/test_config.py` | QA-002 |
+| `backend/tests/test_inbox_service.py` | QA-004 |
+| `backend/tests/test_bootstrap_api.py` | QA-004 |
 | `backend/tests/test_persistence_models.py` | QA-003 |
 | `backend/tests/test_migrations.py` | QA-003 |
 

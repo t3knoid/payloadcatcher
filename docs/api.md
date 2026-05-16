@@ -35,6 +35,42 @@ Swagger and OpenAPI documentation are also required parts of the API surface:
 
 ## Current Implemented Endpoints
 
+### GET /
+
+Provision or return the active inbox callback URL for the current browser session.
+
+Current behavior:
+
+- Creates a new inbox and callback URL on first visit.
+- Reuses the same callback URL while the cookie-bound inbox is still inside the 24-hour TTL.
+- Rotates to a new callback URL after expiration.
+- Captures visit metadata for source IP, user-agent, referer, accept-language, and optional timezone hint.
+- Sets a session cookie with `HttpOnly` and `SameSite=Lax`; the `Secure` flag remains configuration-driven for local versus production environments.
+
+Request details:
+
+- Method: `GET`
+- Optional query params:
+  - `timezone`: browser-provided timezone hint for visit metadata capture
+
+Response shape:
+
+```json
+{
+  "clsid": "550e8400-e29b-41d4-a716-446655440000",
+  "callback_url": "https://payloadcat.ch/hook/550e8400-e29b-41d4-a716-446655440000",
+  "viewer_url": "https://payloadcat.ch/inbox/550e8400-e29b-41d4-a716-446655440000",
+  "expires_at": "2026-05-16T12:00:00Z",
+  "new_session": true
+}
+```
+
+Notes:
+
+- This route appears in Swagger and OpenAPI during local development on port `8000`.
+- The callback URL always uses the canonical hook pattern.
+- Safe `500` error envelopes continue to apply to unhandled failures.
+
 ## Interactive API Documentation
 
 Swagger UI must be enabled for the backend API during development on port `8000`.
@@ -66,24 +102,6 @@ Notes:
 ### Planned Product Endpoints
 
 The routes below are defined by the current PayloadCatcher contract and must stay aligned with [route-contract.md](route-contract.md) and the generated Swagger schema once implemented.
-
-### GET /
-
-Provision or return the active inbox callback URL for the current browser session.
-
-Expected behavior:
-
-- Creates a new inbox on first visit.
-- Returns the same callback URL while the current URL is still valid.
-- Issues a new callback URL after expiration.
-- Uses cookie-first session continuity.
-
-Documentation updates required when this endpoint changes:
-
-- request or response fields
-- cookie or session behavior
-- callback lifecycle behavior
-- metadata collection or privacy behavior
 
 ### POST /hook/{clsid}
 

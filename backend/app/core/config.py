@@ -12,6 +12,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,
     )
 
     app_name: str = Field(default="PayloadCatcher API")
@@ -24,6 +25,11 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://postgres:postgres@localhost:5432/payloadcatcher",
         alias="DATABASE_URL",
     )
+    callback_ttl_hours: int = Field(default=24, alias="CALLBACK_TTL_HOURS")
+    header_allowlist: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["user-agent", "referer", "accept-language"],
+        alias="HEADER_ALLOWLIST",
+    )
     cors_allow_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://127.0.0.1:5173"],
         alias="CORS_ALLOW_ORIGINS",
@@ -32,8 +38,12 @@ class Settings(BaseSettings):
         default_factory=lambda: ["127.0.0.1", "::1"],
         alias="TRUSTED_PROXIES",
     )
+    session_cookie_name: str = Field(default="payloadcatcher_session", alias="SESSION_COOKIE_NAME")
+    cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
+    cookie_samesite: str = Field(default="lax", alias="COOKIE_SAMESITE")
+    cookie_max_age: int = Field(default=86400, alias="COOKIE_MAX_AGE")
 
-    @field_validator("cors_allow_origins", "trusted_proxies", mode="before")
+    @field_validator("header_allowlist", "cors_allow_origins", "trusted_proxies", mode="before")
     @classmethod
     def parse_list_env(cls, value: object) -> object:
         if isinstance(value, str):
@@ -44,6 +54,14 @@ class Settings(BaseSettings):
                 return json.loads(stripped)
             return [item.strip() for item in stripped.split(",") if item.strip()]
         return value
+
+    @field_validator("cookie_samesite")
+    @classmethod
+    def normalize_cookie_samesite(cls, value: str) -> str:
+        normalized = value.lower()
+        if normalized not in {"lax", "strict", "none"}:
+            raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
+        return normalized
 
 
 @lru_cache

@@ -99,6 +99,7 @@ GPS_COLLECTION_ENABLED=true
 COOKIE_SECURE=false
 COOKIE_SAMESITE=lax
 COOKIE_MAX_AGE=86400
+SESSION_COOKIE_NAME=payloadcatcher_session
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/payloadcatcher
 ```
 
@@ -172,6 +173,7 @@ API documentation endpoints during local development:
 Swagger is the required interactive API documentation surface for local development. Keep FastAPI route metadata, request models, response models, and status code declarations accurate so the generated docs stay aligned with `docs/api.md`.
 
 The initial backend scaffold exposes the operational health route at `<http://127.0.0.1:8000/healthz>` in addition to Swagger and OpenAPI endpoints.
+The backend also exposes `GET /` for cookie-backed inbox provisioning and callback URL reuse.
 
 Reverse proxy note:
 
@@ -256,6 +258,13 @@ Backend tests:
 ```powershell
 cd backend
 pytest
+```
+
+Bootstrap endpoint regression:
+
+```powershell
+cd backend
+pytest tests/test_inbox_service.py tests/test_bootstrap_api.py
 ```
 
 Migration verification:

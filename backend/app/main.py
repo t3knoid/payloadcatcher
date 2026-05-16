@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.bootstrap import router as bootstrap_router
 from app.api.routes.health import router as health_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(RequestContextMiddleware)
+    app.include_router(bootstrap_router)
     app.include_router(health_router)
 
     return app
