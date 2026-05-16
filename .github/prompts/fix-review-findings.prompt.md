@@ -45,6 +45,8 @@ Your job is to:
 - add or update focused tests for each fixed issue when practical
 - re-run the narrowest checks that prove the finding is resolved
 - update documentation when the fix changes API behavior, setup, operations, or UI expectations
+- update the qa-test-guides.md file when the fix changes user-facing behavior or UI states
+- update the e2e tests when the fix changes user-facing behavior or UI states
 
 If a reported finding is incorrect, outdated, or no longer reproducible, say so with concrete evidence rather than silently skipping it.
 
