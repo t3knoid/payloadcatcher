@@ -113,7 +113,7 @@ Unless the reviewed change explicitly alters the specification and the docs are 
 11. Audit the changed behavior for required documentation updates, including `docs/api.md` for API-related fixes.
 12. Run the relevant verification steps.
 13. Report which findings are fixed, which remain open, and why.
-14. End with a concise change summary that can be reused as a commit message.
+14. End with a concise change summary that can be reused as a commit message. Present the commit message in imperative or past-tense style inside a code block.
 
 If the user supplied multiple findings, address them in severity order unless there is a clear dependency that requires a different order.
 
