@@ -67,6 +67,58 @@ const inboxSecondPage = {
   ],
 };
 
+const detailByRequestId = {
+  'req-003': {
+    request_id: 'req-003',
+    received_at: '2026-05-15T12:00:02Z',
+    method: 'PATCH',
+    content_type: 'application/json',
+    headers: {
+      'content-type': 'application/json',
+      'x-trace-id': 'trace-003',
+    },
+    payload_yaml: 'type: patch\nid: 3\nstatus: queued\nembedded: <script>alert(1)</script>',
+    source_ip_masked: '203.0.113.xxx',
+    payload_size_bytes: 74,
+  },
+  'req-002': {
+    request_id: 'req-002',
+    received_at: '2026-05-15T12:00:01Z',
+    method: 'POST',
+    content_type: 'application/json',
+    headers: {
+      'content-type': 'application/json',
+    },
+    payload_yaml: 'type: signup\nemail: ada@example.test',
+    source_ip_masked: '203.0.113.xxx',
+    payload_size_bytes: 38,
+  },
+  'req-001': {
+    request_id: 'req-001',
+    received_at: '2026-05-15T12:00:00Z',
+    method: 'PUT',
+    content_type: 'text/plain',
+    headers: {
+      'content-type': 'text/plain',
+    },
+    payload_yaml: 'archived payload',
+    source_ip_masked: '203.0.113.xxx',
+    payload_size_bytes: 16,
+  },
+  'req-101': {
+    request_id: 'req-101',
+    received_at: '2026-05-16T12:00:01Z',
+    method: 'POST',
+    content_type: 'application/json',
+    headers: {
+      'content-type': 'application/json',
+    },
+    payload_yaml: 'type: rotated\nstatus: active',
+    source_ip_masked: '203.0.113.xxx',
+    payload_size_bytes: 29,
+  },
+} as const;
+
 const rotatedInboxFirstPage = {
   hook_url: ROTATED_HOOK_URL,
   next_token: null,
@@ -131,6 +183,8 @@ const routeInboxApi = async (
   options?: {
     initialDelayMs?: number;
     errorQuery?: string;
+    detailDelayMs?: number;
+    detailErrorRequestId?: string;
     bootstrapSequence?: Array<typeof bootstrapPayload>;
   },
 ) => {
@@ -151,6 +205,53 @@ const routeInboxApi = async (
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(payload),
+    });
+  });
+
+  await page.route('http://api.payloadcatcher.test/inbox/*/events/*', async (route) => {
+    const url = new URL(route.request().url());
+    const pathParts = url.pathname.split('/');
+    const requestId = decodeURIComponent(pathParts[pathParts.length - 1] ?? '');
+    const detailPayload = detailByRequestId[requestId as keyof typeof detailByRequestId];
+
+    if (options?.detailDelayMs) {
+      await new Promise((resolve) => setTimeout(resolve, options.detailDelayMs));
+    }
+
+    if (options?.detailErrorRequestId === requestId) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'payload_unavailable',
+            message: 'Payload temporarily unavailable.',
+          },
+          request_id: 'req-detail-error-001',
+        }),
+      });
+      return;
+    }
+
+    if (!detailPayload) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'event_not_found',
+            message: 'Event not found for inbox',
+          },
+          request_id: 'req-detail-not-found-001',
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(detailPayload),
     });
   });
 
@@ -268,6 +369,31 @@ test.describe('QA-011 inbox UI flows', () => {
     await expect(payloadPanelContent).toContainText('email: ada@example.test');
     await expect(payloadPanelContent).toContainText('Request ID');
     await expect(payloadPanelContent).toContainText('req-002');
+    await expect(payloadPanelContent).toContainText('content-type');
+
+    await page.getByTestId('request-req-003').click();
+    await expect(payloadPanelContent).toContainText('<script>alert(1)</script>');
+    await page.getByTestId('payload-copy-button').click();
+    await expect
+      .poll(async () => page.evaluate(() => navigator.clipboard.readText()))
+      .toContain('embedded: <script>alert(1)</script>');
+  });
+
+  test('shows payload detail loading and safe panel errors during selected request fetches', async ({ page, context }) => {
+    test.skip(test.info().project.name !== 'chromium', 'Payload detail state assertions run in the desktop Chromium project only.');
+
+    await page.unroute('http://api.payloadcatcher.test/');
+    await page.unroute('http://api.payloadcatcher.test/inbox/*/events/*');
+    await page.unroute('http://api.payloadcatcher.test/inbox/*');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await routeInboxApi(page, { detailDelayMs: 800, detailErrorRequestId: 'req-002' });
+
+    await page.goto(`/inbox/${CLSID}`, { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('request-req-002').click();
+
+    await expect(page.getByTestId('payload-panel')).toContainText('Loading selected payload...');
+    await expect(page.getByTestId('payload-panel')).toContainText('Payload temporarily unavailable.');
+    await expect(page.getByTestId('payload-panel')).not.toContainText('TypeError');
   });
 
   test('stacks panels on mobile and supports paging plus empty search states', async ({ page }) => {

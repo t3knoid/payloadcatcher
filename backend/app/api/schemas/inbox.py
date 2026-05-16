@@ -39,6 +39,17 @@ class InboxEventSummary(BaseModel):
     source_ip_masked: str = Field(description="Redacted network identifier for public bearer-link viewing.")
 
 
+class InboxEventDetailResponse(BaseModel):
+    request_id: str = Field(description="Server-generated request identifier for the stored event.")
+    received_at: datetime = Field(description="UTC timestamp when the event was received.")
+    method: str = Field(description="HTTP method used for the webhook request.")
+    content_type: str | None = Field(description="Normalized content type for the captured payload.")
+    headers: dict[str, str] = Field(description="Sanitized request headers captured for the event.")
+    payload_yaml: str = Field(description="Full safe YAML or text rendering stored for this event.")
+    source_ip_masked: str = Field(description="Redacted network identifier for public bearer-link viewing.")
+    payload_size_bytes: int = Field(description="Stored raw payload size in bytes.")
+
+
 class InboxViewerMetadata(BaseModel):
     inbox_issued_at: datetime = Field(description="UTC timestamp when the inbox was issued.")
     expires_at: datetime = Field(description="UTC timestamp when the inbox expires.")

@@ -1,42 +1,126 @@
 <script setup lang="ts">
-import type { InboxEventSummary } from '@/types/api';
+import { computed } from 'vue';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-yaml';
 
-defineProps<{
-  event: InboxEventSummary | null;
+import type { InboxEventDetail } from '@/types/api';
+
+const props = defineProps<{
+  detail: InboxEventDetail | null;
+  loading: boolean;
+  error: string | null;
+  copying: boolean;
+  copied: boolean;
 }>();
+
+defineEmits<{
+  copy: [];
+}>();
+
+const LARGE_PAYLOAD_HIGHLIGHT_LIMIT_BYTES = 256 * 1024;
+
+const escapeHtml = (value: string) => {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+};
+
+const headerEntries = computed(() => {
+  return props.detail ? Object.entries(props.detail.headers) : [];
+});
+
+const shouldHighlightPayload = computed(() => {
+  return Boolean(props.detail) && props.detail.payload_size_bytes <= LARGE_PAYLOAD_HIGHLIGHT_LIMIT_BYTES;
+});
+
+const highlightedPayload = computed(() => {
+  if (!props.detail || !shouldHighlightPayload.value) {
+    return '';
+  }
+
+  try {
+    return Prism.highlight(props.detail.payload_yaml, Prism.languages.yaml, 'yaml');
+  } catch {
+    return escapeHtml(props.detail.payload_yaml);
+  }
+});
 </script>
 
 <template>
-  <section class="card panel panel--payload" aria-label="Payload details" data-testid="payload-panel">
-    <div class="panel__header panel__header--payload">
+  <section class="card panel panel--payload" aria-label="Payload details" data-testid="payload-panel" :aria-busy="loading">
+    <div class="panel__header panel__header--payload panel__header--split">
       <div>
         <p class="section-label">Payload (YAML)</p>
-        <p class="panel__caption">Select a request to inspect its captured preview.</p>
+        <p class="panel__caption">
+          {{ detail ? 'Inspect the full stored payload and captured request metadata.' : 'Select a request to inspect its full captured payload.' }}
+        </p>
       </div>
+      <button
+        v-if="detail"
+        type="button"
+        class="payload-panel__copy"
+        :disabled="copying"
+        data-testid="payload-copy-button"
+        @click="$emit('copy')"
+      >
+        {{ copied ? 'Copied' : copying ? 'Copying...' : 'Copy payload' }}
+      </button>
     </div>
 
-    <div v-if="!event" class="panel__state">Select a captured request to inspect its payload preview.</div>
+    <div v-if="loading" class="panel__state">Loading selected payload...</div>
+    <div v-else-if="error" class="panel__state">{{ error }}</div>
+    <div v-else-if="!detail" class="panel__state">Select a captured request to inspect its full payload.</div>
     <div v-else class="payload-panel">
       <dl class="payload-panel__meta">
         <div>
           <dt>Request ID</dt>
-          <dd>{{ event.request_id }}</dd>
+          <dd>{{ detail.request_id }}</dd>
         </div>
         <div>
           <dt>Received</dt>
-          <dd>{{ event.received_at }}</dd>
+          <dd>{{ detail.received_at }}</dd>
         </div>
         <div>
           <dt>Method</dt>
-          <dd>{{ event.method }}</dd>
+          <dd>{{ detail.method }}</dd>
+        </div>
+        <div>
+          <dt>Content Type</dt>
+          <dd>{{ detail.content_type ?? 'Unknown' }}</dd>
         </div>
         <div>
           <dt>Source</dt>
-          <dd>{{ event.source_ip_masked }}</dd>
+          <dd>{{ detail.source_ip_masked }}</dd>
+        </div>
+        <div>
+          <dt>Payload Size</dt>
+          <dd>{{ detail.payload_size_bytes }} B</dd>
         </div>
       </dl>
 
-      <pre class="payload-panel__code"><code>{{ event.payload_yaml }}</code></pre>
+      <section class="payload-panel__section">
+        <p class="section-label">Headers</p>
+        <div v-if="headerEntries.length === 0" class="panel__state">No captured headers are available for this event.</div>
+        <dl v-else class="payload-panel__headers" data-testid="payload-headers">
+          <div v-for="[name, value] in headerEntries" :key="name">
+            <dt>{{ name }}</dt>
+            <dd>{{ value }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="payload-panel__section">
+        <p v-if="!shouldHighlightPayload" class="panel__caption">
+          Syntax highlighting is disabled for large payloads to keep rendering responsive.
+        </p>
+        <pre class="payload-panel__code" :class="{ 'payload-panel__code--plain': !shouldHighlightPayload }">
+          <code v-if="shouldHighlightPayload" class="language-yaml" v-html="highlightedPayload"></code>
+          <code v-else>{{ detail.payload_yaml }}</code>
+        </pre>
+      </section>
     </div>
   </section>
 </template>

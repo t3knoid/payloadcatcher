@@ -122,7 +122,7 @@ Response 200 shape:
 
 Notes:
 
-- `events` powers the viewer list and supplies the preview content needed for initial payload rendering.
+- `events` powers the viewer list and supplies preview content for the request list and first-pass selection UI.
 - `next_token` is an opaque cursor derived from the last event in the current page.
 - Search matches request ID, method, stored source IP, and the visible payload preview text returned by the endpoint.
 - Sort order is stable by `received_at DESC, request_id DESC`.
@@ -139,6 +139,46 @@ Errors:
 Retry behavior:
 
 - 429 and 503 responses include `Retry-After` header and `error.details.retry_after_seconds`.
+
+### 1.4 GET /inbox/{clsid}/events/{request_id}
+
+Purpose: Return the full payload view and selected request metadata for one inbox event.
+
+Path params:
+
+- `clsid` (required, lowercase UUIDv4)
+- `request_id` (required, server-generated request identifier for an event belonging to the inbox)
+
+Response 200 shape:
+
+```json
+{
+  "request_id": "339adb08249348f089a1fdd27bf0743a",
+  "received_at": "2026-05-15T12:03:02Z",
+  "method": "POST",
+  "content_type": "application/json",
+  "headers": {
+    "content-type": "application/json",
+    "x-trace-id": "trace-123"
+  },
+  "payload_yaml": "foo: bar\ncount: 2\n",
+  "source_ip_masked": "203.0.113.0/24",
+  "payload_size_bytes": 20
+}
+```
+
+Notes:
+
+- Returns the full stored `payload_yaml` value without preview truncation.
+- Returns sanitized captured headers for the selected event.
+- Viewer-facing network identifiers remain masked by default.
+- The viewer must treat `payload_yaml` as inert text and never execute payload content.
+
+Errors:
+
+- 400 invalid clsid
+- 404 unknown/expired inbox or event not found for inbox
+- 429 rate limited
 
 ## 2. Standard Error Envelope
 

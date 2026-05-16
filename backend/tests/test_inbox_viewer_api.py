@@ -17,7 +17,11 @@ from app.persistence.models import Inbox, WebhookEvent
 from app.persistence.session import get_db_session
 
 
-def _build_test_app(*, rate_limit_per_minute: int = 60) -> tuple[FastAPI, sessionmaker[Session]]:
+def _build_test_app(
+    *,
+    rate_limit_per_minute: int = 60,
+    viewer_payload_preview_chars: int = 4096,
+) -> tuple[FastAPI, sessionmaker[Session]]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -31,6 +35,7 @@ def _build_test_app(*, rate_limit_per_minute: int = 60) -> tuple[FastAPI, sessio
         _env_file=None,
         trusted_proxies=["testclient"],
         rate_limit_per_minute=rate_limit_per_minute,
+        viewer_payload_preview_chars=viewer_payload_preview_chars,
     )
     limiter = InMemoryRateLimiter(rate_limit_per_minute)
 
@@ -53,7 +58,7 @@ def _seed_inbox_with_events(
     *,
     expired: bool = False,
 ) -> None:
-    issued_at = datetime(2026, 5, 15, 12, 0, tzinfo=UTC)
+    issued_at = datetime(2026, 5, 16, 12, 0, tzinfo=UTC)
     expires_at = issued_at + timedelta(hours=24)
     if expired:
         expires_at = issued_at - timedelta(minutes=1)
@@ -247,6 +252,45 @@ def test_get_inbox_returns_429_with_retry_hints_when_rate_limited() -> None:
     }
 
 
+def test_get_inbox_event_detail_returns_full_payload_and_headers() -> None:
+    clsid = "550e8400-e29b-41d4-a716-446655440106"
+    app, session_factory = _build_test_app(viewer_payload_preview_chars=10)
+    _seed_inbox_with_events(session_factory, clsid)
+    client = TestClient(app)
+
+    response = client.get(f"/inbox/{clsid}/events/evt-middle")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "request_id": "evt-middle",
+        "received_at": "2026-05-15T12:02:00Z",
+        "method": "PATCH",
+        "content_type": "text/plain",
+        "headers": {"content-type": "text/plain"},
+        "payload_yaml": "!!python/object/apply:os.system ['echo nope']\n",
+        "source_ip_masked": "198.51.100.0/24",
+        "payload_size_bytes": 19,
+    }
+
+
+def test_get_inbox_event_detail_returns_safe_404_for_missing_event() -> None:
+    clsid = "550e8400-e29b-41d4-a716-446655440107"
+    app, session_factory = _build_test_app()
+    _seed_inbox_with_events(session_factory, clsid)
+    client = TestClient(app)
+
+    response = client.get(f"/inbox/{clsid}/events/missing-request")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "event_not_found",
+            "message": "Event not found for inbox",
+        },
+        "request_id": response.headers["x-request-id"],
+    }
+
+
 def test_openapi_includes_inbox_viewer_route() -> None:
     app, _ = _build_test_app()
     client = TestClient(app)
@@ -255,3 +299,4 @@ def test_openapi_includes_inbox_viewer_route() -> None:
 
     assert response.status_code == 200
     assert "/inbox/{clsid}" in response.json()["paths"]
+    assert "/inbox/{clsid}/events/{request_id}" in response.json()["paths"]

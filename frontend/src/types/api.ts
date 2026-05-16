@@ -24,6 +24,17 @@ export interface InboxEventSummary {
   source_ip_masked: string;
 }
 
+export interface InboxEventDetail {
+  request_id: string;
+  received_at: string;
+  method: string;
+  content_type: string | null;
+  headers: Record<string, string>;
+  payload_yaml: string;
+  source_ip_masked: string;
+  payload_size_bytes: number;
+}
+
 export interface InboxMetadata {
   inbox_issued_at: string;
   expires_at: string;

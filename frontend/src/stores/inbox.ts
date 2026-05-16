@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 
 import { ApiClientError, apiClient } from '@/api/api-client';
-import type { BootstrapResponse, InboxEventSummary, InboxResponse } from '@/types/api';
+import type { BootstrapResponse, InboxEventDetail, InboxEventSummary, InboxResponse } from '@/types/api';
 
 const DEFAULT_LIMIT = 50;
 
@@ -25,15 +25,21 @@ export const useInboxStore = defineStore('inbox', () => {
   const inbox = ref<InboxResponse | null>(null);
   const events = ref<InboxEventSummary[]>([]);
   const selectedRequestId = ref<string | null>(null);
+  const selectedEventDetail = ref<InboxEventDetail | null>(null);
   const search = ref('');
   const loading = ref(false);
   const loadingMore = ref(false);
+  const detailLoading = ref(false);
   const copying = ref(false);
   const copied = ref(false);
+  const payloadCopying = ref(false);
+  const payloadCopied = ref(false);
   const error = ref<string | null>(null);
+  const detailError = ref<string | null>(null);
   const activeClsid = ref<string | null>(null);
   const currentCursor = ref<string | null>(null);
   const cursorHistory = ref<string[]>([]);
+  let detailRequestSequence = 0;
 
   const selectedEvent = computed(() => {
     return events.value.find((event) => event.request_id === selectedRequestId.value) ?? events.value[0] ?? null;
@@ -83,6 +89,60 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   };
 
+  const clearSelectedEventDetail = () => {
+    selectedEventDetail.value = null;
+    detailError.value = null;
+    detailLoading.value = false;
+    payloadCopying.value = false;
+    payloadCopied.value = false;
+  };
+
+  const loadEventDetail = async (requestId: string) => {
+    if (!activeClsid.value) {
+      clearSelectedEventDetail();
+      return;
+    }
+
+    const requestSequence = ++detailRequestSequence;
+    detailLoading.value = true;
+    detailError.value = null;
+    selectedEventDetail.value = null;
+    payloadCopied.value = false;
+
+    try {
+      const payload = await apiClient.getInboxEventDetail(activeClsid.value, requestId);
+      if (requestSequence !== detailRequestSequence || selectedRequestId.value !== requestId) {
+        return;
+      }
+
+      selectedEventDetail.value = payload;
+    } catch (caughtError) {
+      if (requestSequence !== detailRequestSequence || selectedRequestId.value !== requestId) {
+        return;
+      }
+
+      detailError.value = buildSafeMessage(caughtError);
+    } finally {
+      if (requestSequence === detailRequestSequence && selectedRequestId.value === requestId) {
+        detailLoading.value = false;
+      }
+    }
+  };
+
+  const ensureSelectedEventDetail = async () => {
+    const requestId = selectedRequestId.value;
+    if (!requestId) {
+      clearSelectedEventDetail();
+      return;
+    }
+
+    if (selectedEventDetail.value?.request_id === requestId && !detailError.value) {
+      return;
+    }
+
+    await loadEventDetail(requestId);
+  };
+
   const loadInbox = async (clsid: string, options?: LoadInboxOptions) => {
     activeClsid.value = clsid;
     error.value = null;
@@ -103,6 +163,7 @@ export const useInboxStore = defineStore('inbox', () => {
       applyInbox(payload);
       currentCursor.value = options?.cursor ?? null;
       cursorHistory.value = [...(options?.cursorHistory ?? [])];
+      await ensureSelectedEventDetail();
     } catch (caughtError) {
       error.value = buildSafeMessage(caughtError);
     } finally {
@@ -172,7 +233,16 @@ export const useInboxStore = defineStore('inbox', () => {
   };
 
   const selectRequest = (requestId: string) => {
+    if (
+      selectedRequestId.value === requestId &&
+      selectedEventDetail.value?.request_id === requestId &&
+      !detailError.value
+    ) {
+      return Promise.resolve();
+    }
+
     selectedRequestId.value = requestId;
+    return loadEventDetail(requestId);
   };
 
   const copyCallbackUrl = async () => {
@@ -192,6 +262,23 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   };
 
+  const copyPayload = async () => {
+    if (!selectedEventDetail.value) {
+      return;
+    }
+
+    payloadCopying.value = true;
+    try {
+      await navigator.clipboard.writeText(selectedEventDetail.value.payload_yaml);
+      payloadCopied.value = true;
+      window.setTimeout(() => {
+        payloadCopied.value = false;
+      }, 1800);
+    } finally {
+      payloadCopying.value = false;
+    }
+  };
+
   const clearBootstrap = () => {
     bootstrap.value = null;
   };
@@ -203,9 +290,12 @@ export const useInboxStore = defineStore('inbox', () => {
     clearBootstrap,
     copied,
     copyCallbackUrl,
+    copyPayload,
     currentCursor,
     currentPage,
     cursorHistory,
+    detailError,
+    detailLoading,
     error,
     events,
     hasNextPage,
@@ -216,9 +306,12 @@ export const useInboxStore = defineStore('inbox', () => {
     loadPreviousPage,
     loading,
     loadingMore,
+    payloadCopied,
+    payloadCopying,
     refreshSearch,
     search,
     selectRequest,
+    selectedEventDetail,
     selectedEvent,
     selectedRequestId,
     statusLabel,

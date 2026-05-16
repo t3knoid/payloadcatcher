@@ -12,7 +12,13 @@ from sqlalchemy import String, and_, case, cast, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
-from app.api.schemas.inbox import InboxEventSummary, InboxViewerMetadata, InboxViewerQuery, InboxViewerResponse
+from app.api.schemas.inbox import (
+    InboxEventDetailResponse,
+    InboxEventSummary,
+    InboxViewerMetadata,
+    InboxViewerQuery,
+    InboxViewerResponse,
+)
 from app.core.config import Settings, get_settings
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
 from app.persistence.models import Inbox, WebhookEvent
@@ -37,23 +43,9 @@ class InboxViewerService:
         self.rate_limiter = rate_limiter
 
     def get_inbox_view(self, clsid: str, query: InboxViewerQuery, request: Request) -> InboxViewerResponse:
-        normalized_clsid = self.validate_clsid(clsid)
         limit = self.validate_limit(query.limit)
         cursor = self.decode_cursor(query.cursor)
-        source_ip = self.normalize_source_ip(
-            request.client.host if request.client else None,
-            request.headers.get("x-forwarded-for"),
-        )
-        self.enforce_rate_limit(source_ip)
-
-        inbox = self.session.scalar(
-            select(Inbox).where(
-                Inbox.clsid == normalized_clsid,
-                Inbox.expires_at > self.utc_now(),
-            )
-        )
-        if inbox is None:
-            raise ApiError(404, "inbox_not_found", "Inbox not found or expired")
+        inbox = self._get_active_inbox(clsid, request)
 
         matched_events = self._load_events(inbox.id, query.q, cursor, limit)
         next_token = None
@@ -74,6 +66,28 @@ class InboxViewerService:
                 expires_at=inbox.expires_at,
                 capture_count=capture_count or 0,
             ),
+        )
+
+    def get_inbox_event_detail(self, clsid: str, request_id: str, request: Request) -> InboxEventDetailResponse:
+        inbox = self._get_active_inbox(clsid, request)
+        event = self.session.scalar(
+            select(WebhookEvent).where(
+                WebhookEvent.inbox_id == inbox.id,
+                WebhookEvent.request_id == request_id,
+            )
+        )
+        if event is None:
+            raise ApiError(404, "event_not_found", "Event not found for inbox")
+
+        return InboxEventDetailResponse(
+            request_id=event.request_id,
+            received_at=self._response_datetime(event.received_at),
+            method=event.method,
+            content_type=event.content_type,
+            headers=self._serialize_headers(event.headers_json),
+            payload_yaml=event.payload_yaml,
+            source_ip_masked=self.mask_source_ip(event.source_ip),
+            payload_size_bytes=event.payload_size_bytes,
         )
 
     def validate_clsid(self, clsid: str) -> str:
@@ -157,6 +171,24 @@ class InboxViewerService:
     def utc_now(self) -> datetime:
         return datetime.now(UTC)
 
+    def _get_active_inbox(self, clsid: str, request: Request) -> Inbox:
+        normalized_clsid = self.validate_clsid(clsid)
+        source_ip = self.normalize_source_ip(
+            request.client.host if request.client else None,
+            request.headers.get("x-forwarded-for"),
+        )
+        self.enforce_rate_limit(source_ip)
+
+        inbox = self.session.scalar(
+            select(Inbox).where(
+                Inbox.clsid == normalized_clsid,
+                Inbox.expires_at > self.utc_now(),
+            )
+        )
+        if inbox is None:
+            raise ApiError(404, "inbox_not_found", "Inbox not found or expired")
+        return inbox
+
     def _load_events(
         self,
         inbox_id: uuid.UUID,
@@ -211,6 +243,15 @@ class InboxViewerService:
 
     def _build_hook_url(self, clsid: str) -> str:
         return f"{self.settings.base_url.rstrip('/')}/hook/{clsid}"
+
+    def _serialize_headers(self, headers: object) -> dict[str, str]:
+        if not isinstance(headers, dict):
+            return {}
+
+        serialized: dict[str, str] = {}
+        for key, value in headers.items():
+            serialized[str(key)] = str(value)
+        return serialized
 
     def _is_valid_ip_address(self, value: str) -> bool:
         try:

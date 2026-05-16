@@ -174,6 +174,7 @@ Current behavior:
   - IPv4 is masked to `/24`
   - IPv6 is masked to `/64`
 - Returns stored payload preview text without reparsing the YAML, and truncates public previews to the `VIEWER_PAYLOAD_PREVIEW_CHARS` limit, which must be at least `4`.
+- Keeps the list payloads preview-only; the full selected payload and headers are fetched through `GET /inbox/{clsid}/events/{request_id}`.
 
 Request details:
 
@@ -222,6 +223,57 @@ Notes:
 - Public viewer responses remain bearer-link access by possession of URL and do not require a session cookie.
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
 - Viewer previews reflect the stored YAML or text preview created during hook ingestion; the viewer endpoint does not execute or dynamically parse payload content.
+
+### GET /inbox/{clsid}/events/{request_id}
+
+Return the full stored payload rendering and selected request metadata for a valid inbox event.
+
+Current behavior:
+
+- Validates that `clsid` is a lowercase UUIDv4 before querying the inbox.
+- Rejects unknown or expired inbox identifiers with a safe `404` error envelope.
+- Rejects missing event identifiers for the active inbox with a safe `404` error envelope.
+- Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
+- Returns the full stored `payload_yaml` value without preview truncation.
+- Returns sanitized captured request headers, masked source IP data, and payload size metadata for the selected event.
+
+Request details:
+
+- Method: `GET`
+- Path params:
+  - `clsid`: lowercase UUIDv4 inbox identifier
+  - `request_id`: server-generated event request identifier for the inbox
+
+Response shape:
+
+```json
+{
+  "request_id": "339adb08249348f089a1fdd27bf0743a",
+  "received_at": "2026-05-15T12:03:02Z",
+  "method": "POST",
+  "content_type": "application/json",
+  "headers": {
+    "content-type": "application/json",
+    "x-trace-id": "trace-123"
+  },
+  "payload_yaml": "foo: bar\ncount: 2\n",
+  "source_ip_masked": "203.0.113.0/24",
+  "payload_size_bytes": 20
+}
+```
+
+Error responses:
+
+- `400` when `clsid` is invalid
+- `404` when the inbox is missing, expired, or the selected event does not belong to the inbox
+- `429` when the source IP exceeds `RATE_LIMIT_PER_MINUTE`
+- `500` safe error envelope for unexpected failures
+
+Notes:
+
+- This route appears in Swagger and OpenAPI during local development on port `8000`.
+- Public viewer responses remain bearer-link access by possession of URL and do not require a session cookie.
+- The returned payload YAML is already stored server-side; the viewer does not evaluate payload content.
 
 ## Error Envelope
 

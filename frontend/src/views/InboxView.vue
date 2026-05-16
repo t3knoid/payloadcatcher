@@ -143,7 +143,14 @@ watch(
         @next="handleNext"
         @previous="handlePrevious"
       />
-      <PayloadPanel :event="store.selectedEvent" />
+      <PayloadPanel
+        :detail="store.selectedEventDetail"
+        :loading="store.detailLoading"
+        :error="store.detailError"
+        :copying="store.payloadCopying"
+        :copied="store.payloadCopied"
+        @copy="store.copyPayload"
+      />
     </section>
   </MainLayout>
 </template>

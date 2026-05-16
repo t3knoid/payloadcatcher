@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 
 from app.api.schemas.common import SafeErrorResponse
-from app.api.schemas.inbox import InboxViewerQuery, InboxViewerResponse
+from app.api.schemas.inbox import InboxEventDetailResponse, InboxViewerQuery, InboxViewerResponse
 from app.services.inbox_viewer import InboxViewerService, get_inbox_viewer_service
 
 router = APIRouter(tags=["inbox"])
@@ -30,3 +30,24 @@ def get_inbox_view(
     service: Annotated[InboxViewerService, Depends(get_inbox_viewer_service)],
 ) -> InboxViewerResponse:
     return service.get_inbox_view(clsid, query, request)
+
+
+@router.get(
+    "/inbox/{clsid}/events/{request_id}",
+    response_model=InboxEventDetailResponse,
+    summary="Get inbox event detail",
+    description="Return the full safe payload rendering and captured request metadata for a selected inbox event.",
+    responses={
+        400: {"model": SafeErrorResponse, "description": "Malformed clsid input."},
+        404: {"model": SafeErrorResponse, "description": "Inbox or event does not exist, or the inbox has expired."},
+        429: {"model": SafeErrorResponse, "description": "Too many requests for the current source IP."},
+        500: {"model": SafeErrorResponse, "description": "Safe internal error envelope."},
+    },
+)
+def get_inbox_event_detail(
+    clsid: str,
+    request_id: str,
+    request: Request,
+    service: Annotated[InboxViewerService, Depends(get_inbox_viewer_service)],
+) -> InboxEventDetailResponse:
+    return service.get_inbox_event_detail(clsid, request_id, request)

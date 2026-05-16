@@ -40,7 +40,7 @@ def _build_request() -> Request:
 
 
 def _seed_inbox_and_events(session: Session, clsid: str) -> None:
-    issued_at = datetime(2026, 5, 15, 12, 0, tzinfo=UTC)
+    issued_at = datetime(2026, 5, 16, 12, 0, tzinfo=UTC)
     inbox = Inbox(
         clsid=clsid,
         source_ip="198.51.100.20",
@@ -152,7 +152,7 @@ def test_truncate_payload_yaml_respects_small_valid_preview_limits(
 def test_get_inbox_view_search_uses_visible_preview_text() -> None:
     session = _build_session()
     clsid = "550e8400-e29b-41d4-a716-446655440111"
-    issued_at = datetime(2026, 5, 15, 12, 0, tzinfo=UTC)
+    issued_at = datetime(2026, 5, 16, 12, 0, tzinfo=UTC)
     inbox = Inbox(
         clsid=clsid,
         source_ip="198.51.100.20",
@@ -191,3 +191,64 @@ def test_get_inbox_view_search_uses_visible_preview_text() -> None:
     assert hidden_match.events == []
     assert [event.request_id for event in visible_match.events] == ["evt-truncated"]
     assert visible_match.events[0].payload_yaml == "prefix-..."
+
+
+def test_get_inbox_event_detail_returns_full_payload_and_headers() -> None:
+    session = _build_session()
+    clsid = "550e8400-e29b-41d4-a716-446655440112"
+    issued_at = datetime(2026, 5, 16, 12, 0, tzinfo=UTC)
+    inbox = Inbox(
+        clsid=clsid,
+        source_ip="198.51.100.20",
+        issued_at=issued_at,
+        expires_at=issued_at + timedelta(hours=24),
+    )
+    session.add(inbox)
+    session.flush()
+    full_payload = "prefix-aaaaaaaaaaaaaaaaaaaa-needle"
+    session.add(
+        WebhookEvent(
+            inbox_id=inbox.id,
+            request_id="evt-detail",
+            received_at=datetime(2026, 5, 15, 12, 5, tzinfo=UTC),
+            method="POST",
+            content_type="application/json",
+            headers_json={"content-type": "application/json", "x-trace-id": "trace-123"},
+            payload_raw=b'{"payload":"full"}',
+            payload_size_bytes=18,
+            payload_encoding=None,
+            payload_yaml=full_payload,
+            source_ip="203.0.113.10",
+            dedup_key=None,
+            is_duplicate=False,
+        )
+    )
+    session.commit()
+    service = InboxViewerService(
+        session=session,
+        settings=Settings(_env_file=None, viewer_payload_preview_chars=10),
+        rate_limiter=None,
+    )
+
+    detail = service.get_inbox_event_detail(clsid, "evt-detail", _build_request())
+    summary = service.get_inbox_view(clsid, InboxViewerQuery(), _build_request())
+
+    assert detail.request_id == "evt-detail"
+    assert detail.payload_yaml == full_payload
+    assert detail.headers == {"content-type": "application/json", "x-trace-id": "trace-123"}
+    assert detail.source_ip_masked == "203.0.113.0/24"
+    assert detail.payload_size_bytes == 18
+    assert summary.events[0].payload_yaml == "prefix-..."
+
+
+def test_get_inbox_event_detail_rejects_missing_request_id() -> None:
+    session = _build_session()
+    clsid = "550e8400-e29b-41d4-a716-446655440113"
+    _seed_inbox_and_events(session, clsid)
+    service = InboxViewerService(session=session, settings=Settings(_env_file=None), rate_limiter=None)
+
+    with pytest.raises(ApiError) as exc_info:
+        service.get_inbox_event_detail(clsid, "missing-request", _build_request())
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.error_code == "event_not_found"

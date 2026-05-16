@@ -1,10 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { bootstrapInbox, getInbox } = vi.hoisted(() => {
+const { bootstrapInbox, getInbox, getInboxEventDetail } = vi.hoisted(() => {
   return {
     bootstrapInbox: vi.fn(),
     getInbox: vi.fn(),
+    getInboxEventDetail: vi.fn(),
   };
 });
 
@@ -28,6 +29,7 @@ vi.mock('@/api/api-client', () => {
     apiClient: {
       bootstrapInbox,
       getInbox,
+      getInboxEventDetail,
     },
   };
 });
@@ -85,23 +87,73 @@ const filteredPage = {
   events: [firstPage.events[1]],
 };
 
+const firstDetail = {
+  request_id: 'req-003',
+  received_at: '2026-05-15T12:00:02Z',
+  method: 'PATCH',
+  content_type: 'application/json',
+  headers: {
+    'content-type': 'application/json',
+    'x-trace-id': 'trace-003',
+  },
+  payload_yaml: 'type: patch\nid: 3\nstatus: queued\n<script>alert(1)</script>',
+  source_ip_masked: '203.0.113.xxx',
+  payload_size_bytes: 64,
+};
+
+const secondDetail = {
+  request_id: 'req-002',
+  received_at: '2026-05-15T12:00:01Z',
+  method: 'POST',
+  content_type: 'application/json',
+  headers: {
+    'content-type': 'application/json',
+  },
+  payload_yaml: 'type: signup\nemail: ada@example.test',
+  source_ip_masked: '203.0.113.xxx',
+  payload_size_bytes: 39,
+};
+
 describe('inbox store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     getInbox.mockReset();
     bootstrapInbox.mockReset();
+    getInboxEventDetail.mockReset();
+  });
+
+  it('loads selected event detail after the inbox list is loaded', async () => {
+    const store = useInboxStore();
+
+    getInbox.mockResolvedValueOnce(firstPage);
+    getInboxEventDetail.mockResolvedValueOnce(firstDetail);
+
+    await store.loadInbox(CLSID);
+
+    expect(getInboxEventDetail).toHaveBeenCalledWith(CLSID, 'req-003');
+    expect(store.selectedEventDetail).toEqual(firstDetail);
+    expect(store.detailError).toBeNull();
+    expect(store.detailLoading).toBe(false);
   });
 
   it('resets pagination state when search changes', async () => {
     const store = useInboxStore();
 
     getInbox.mockResolvedValueOnce(firstPage);
+    getInboxEventDetail.mockResolvedValueOnce(firstDetail);
     await store.loadInbox(CLSID);
 
     getInbox.mockResolvedValueOnce(secondPage);
+    getInboxEventDetail.mockResolvedValueOnce({
+      ...firstDetail,
+      request_id: 'req-001',
+      payload_yaml: 'archived payload',
+      payload_size_bytes: 16,
+    });
     await store.loadNextPage();
 
     getInbox.mockResolvedValueOnce(filteredPage);
+    getInboxEventDetail.mockResolvedValueOnce(secondDetail);
     await store.refreshSearch('signup');
 
     expect(getInbox).toHaveBeenLastCalledWith(CLSID, {
@@ -120,9 +172,16 @@ describe('inbox store', () => {
     const store = useInboxStore();
 
     getInbox.mockResolvedValueOnce(firstPage);
+    getInboxEventDetail.mockResolvedValueOnce(firstDetail);
     await store.loadInbox(CLSID);
 
     getInbox.mockResolvedValueOnce(secondPage);
+    getInboxEventDetail.mockResolvedValueOnce({
+      ...firstDetail,
+      request_id: 'req-001',
+      payload_yaml: 'archived payload',
+      payload_size_bytes: 16,
+    });
     await store.loadNextPage();
 
     expect(getInbox).toHaveBeenLastCalledWith(CLSID, {
@@ -136,6 +195,7 @@ describe('inbox store', () => {
     expect(store.events.map((event) => event.request_id)).toEqual(['req-001']);
 
     getInbox.mockResolvedValueOnce(firstPage);
+  getInboxEventDetail.mockResolvedValueOnce(firstDetail);
     await store.loadPreviousPage();
 
     expect(getInbox).toHaveBeenLastCalledWith(CLSID, {
@@ -147,5 +207,23 @@ describe('inbox store', () => {
     expect(store.currentCursor).toBeNull();
     expect(store.cursorHistory).toEqual([]);
     expect(store.events.map((event) => event.request_id)).toEqual(['req-003', 'req-002']);
+  });
+
+  it('reloads detail when selecting another request and surfaces safe detail errors', async () => {
+    const store = useInboxStore();
+
+    getInbox.mockResolvedValueOnce(firstPage);
+    getInboxEventDetail.mockResolvedValueOnce(firstDetail);
+    await store.loadInbox(CLSID);
+
+    getInboxEventDetail.mockRejectedValueOnce(
+      new Error('Payload temporarily unavailable.'),
+    );
+    await store.selectRequest('req-002');
+
+    expect(getInboxEventDetail).toHaveBeenLastCalledWith(CLSID, 'req-002');
+    expect(store.selectedRequestId).toBe('req-002');
+    expect(store.selectedEventDetail).toBeNull();
+    expect(store.detailError).toBe('Unable to load inbox data.');
   });
 });

@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from '@/config/runtime';
-import type { ApiErrorEnvelope, BootstrapResponse, InboxResponse } from '@/types/api';
+import type { ApiErrorEnvelope, BootstrapResponse, InboxEventDetail, InboxResponse } from '@/types/api';
 
 class ApiClientError extends Error {
   status: number;
@@ -59,6 +59,9 @@ export const apiClient = {
   },
   getInbox(clsid: string, params?: { q?: string; cursor?: string | null; limit?: number }): Promise<InboxResponse> {
     return request<InboxResponse>(`/inbox/${clsid}`, undefined, params);
+  },
+  getInboxEventDetail(clsid: string, requestId: string): Promise<InboxEventDetail> {
+    return request<InboxEventDetail>(`/inbox/${clsid}/events/${encodeURIComponent(requestId)}`);
   },
 };
 
