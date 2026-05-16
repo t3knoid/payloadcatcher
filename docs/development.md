@@ -119,6 +119,8 @@ Frontend local env example:
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
+The frontend accepts the API base URL from `frontend/.env`, `frontend/.env.local`, or a runtime-injected `window.__PAYLOADCATCHER_CONFIG__` object. If no frontend env file is present, copy `frontend/.env.example` and adjust it for your local backend origin.
+
 Never commit secrets in local env files.
 
 `VIEWER_PAYLOAD_PREVIEW_CHARS` controls the public inbox preview length and must be an integer greater than or equal to `4`.
@@ -199,12 +201,33 @@ From repository root:
 ```powershell
 cd frontend
 npm install
+npx playwright install chromium
 npm run dev
+```
+
+Frontend quality checks:
+
+```powershell
+cd frontend
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
 ```
 
 Default local dev URL is typically:
 
 - <http://127.0.0.1:5173>
+
+The scaffold uses Vue Router history mode for `/` and `/inbox/{clsid}` and uses a centralized API client under `frontend/src/api/api-client.ts` for all backend requests.
+
+Optional Docker Compose workflow:
+
+```powershell
+docker compose up --build frontend api db
+```
+
+The Compose frontend service binds Vite to `0.0.0.0:5173` and targets the backend API at `http://127.0.0.1:8000` for browser traffic on the host machine.
 
 ## 8. Run the Site from Source
 
@@ -213,7 +236,7 @@ Default local dev URL is typically:
 3. Start frontend (Section 7).
 4. Open the frontend URL.
 5. Open <http://127.0.0.1:8000/docs> and confirm Swagger UI loads.
-6. Verify callback generation and inbox view.
+6. Verify callback generation, request list rendering, payload panel selection, and inbox route loading.
 7. Confirm `<http://127.0.0.1:8000/healthz>` returns `{"status": "ok"}`.
 
 ## 9. Debugging in VS Code
@@ -310,7 +333,8 @@ npm run test
 End-to-end tests (when configured):
 
 ```powershell
-npx playwright test
+npx playwright install chromium
+npm run test:e2e
 ```
 
 Docker Compose development stack:

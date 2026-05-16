@@ -166,7 +166,7 @@ Purpose: verify metadata collection boundaries and privacy-visible behavior.
 | QA-009-02 | Sensitive headers are not stored or exposed | API/Manual | blocked | Raw secrets do not appear in persistence, logs, or public responses. |
 | QA-009-03 | GPS data is collected only after explicit consent | E2E/Manual | blocked | No GPS values are stored without opt-in. |
 | QA-009-04 | Privacy notice is visible before or at collection time | E2E/Manual | blocked | Operator-visible privacy notice appears as required. |
-| QA-009-05 | Public viewer redacts source IP details by default | API/E2E | blocked | Network identifiers remain masked in bearer-link views. |
+| QA-009-05 | Public viewer redacts source IP details by default | API/E2E | implemented | Network identifiers remain masked in bearer-link views. |
 
 ## Suite QA-010 Abuse Controls, Deduplication, And Retention
 
@@ -186,12 +186,12 @@ Purpose: verify the operator-facing UI matches the documented layout and interac
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-011-01 | Header shows menu entry point and recognizable branding | E2E/Manual | blocked | Header matches the UI mock structure. |
-| QA-011-02 | Callback URL control copies the URL to clipboard | E2E | blocked | Primary click action copies the current hook URL. |
-| QA-011-03 | Desktop layout uses narrow list and wide payload panel | E2E/Visual | blocked | Layout approximates the documented 30/70 split at desktop widths. |
-| QA-011-04 | Mobile layout stacks list before payload panel | E2E/Visual | blocked | Small-device flow preserves request selection behavior. |
-| QA-011-05 | Clicking a request updates the selected payload panel | E2E | blocked | Selected payload changes without unsafe rendering. |
-| QA-011-06 | Empty, loading, and error states remain user-readable | E2E/Manual | ready | UI surfaces safe operator-friendly states when data is absent or failing. |
+| QA-011-01 | Header shows menu entry point and recognizable branding | E2E/Manual | implemented | Header matches the UI mock structure. |
+| QA-011-02 | Callback URL control copies the URL to clipboard | E2E | implemented | Primary click action copies the current hook URL. |
+| QA-011-03 | Desktop layout uses narrow list and wide payload panel | E2E/Visual | implemented | Layout approximates the documented 30/70 split at desktop widths. |
+| QA-011-04 | Mobile layout stacks list before payload panel | E2E/Visual | implemented | Small-device flow preserves request selection behavior. |
+| QA-011-05 | Clicking a request updates the selected payload panel | E2E | implemented | Selected payload changes without unsafe rendering. |
+| QA-011-06 | Empty, loading, and error states remain user-readable | E2E/Manual | implemented | UI surfaces safe operator-friendly states when data is absent or failing. |
 
 ## 6. Minimum Regression Packs
 
@@ -212,6 +212,7 @@ Current automated coverage in the repository maps to these suites:
 | --- | --- |
 | `backend/tests/test_app.py` | QA-001 |
 | `backend/tests/test_config.py` | QA-002 |
+| `frontend/src/config/runtime.test.ts` | QA-002 |
 | `backend/tests/test_inbox_service.py` | QA-004 |
 | `backend/tests/test_bootstrap_api.py` | QA-004 |
 | `backend/tests/test_inbox_viewer_service.py` | QA-006, QA-007 |
@@ -220,6 +221,8 @@ Current automated coverage in the repository maps to these suites:
 | `backend/tests/test_hook_api.py` | QA-005, QA-007, QA-010 |
 | `backend/tests/test_persistence_models.py` | QA-003 |
 | `backend/tests/test_migrations.py` | QA-003 |
+| `frontend/src/router/router.test.ts` | QA-011 |
+| `frontend/tests/e2e/inbox-ui.spec.ts` | QA-011 |
 
 ## 8. Verification Commands
 
@@ -243,12 +246,15 @@ Frontend checks:
 cd frontend
 npm run lint
 npm run test
+npm run build
 ```
 
 End-to-end checks:
 
 ```powershell
-npx playwright test
+cd frontend
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## 9. Maintenance Rules
@@ -263,7 +269,7 @@ When a change introduces or modifies behavior:
 
 ## 10. Recommended Next Additions
 
-1. Add Playwright specs for callback provisioning and inbox browsing once the frontend exists.
-2. Add API tests for `GET /`, `POST /hook/{clsid}`, and `GET /inbox/{clsid}` as those routes are implemented.
+1. Add Playwright coverage for privacy-visible metadata and consent flows when GPS or locality prompts are introduced in the frontend.
+2. Add API tests for `POST /hook/{clsid}` and `GET /inbox/{clsid}` edge cases that are not already covered by the current contract suites.
 3. Add API tests for plain-text hook payload acceptance once a dedicated text-ingest fixture is added.
 4. Add dedicated load and concurrency checks for burst webhook ingestion before production release.

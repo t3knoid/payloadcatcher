@@ -1,0 +1,409 @@
+{
+  "config": {
+    "configFile": "c:\\Users\\franc\\payloadcatcher\\frontend\\playwright.config.ts",
+    "rootDir": "c:/Users/franc/payloadcatcher/frontend/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "c:/Users/franc/payloadcatcher/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "c:/Users/franc/payloadcatcher/frontend/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "c:/Users/franc/payloadcatcher/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile-chrome",
+        "name": "mobile-chrome",
+        "testDir": "c:/Users/franc/payloadcatcher/frontend/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.60.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run build && npm run preview -- --host 127.0.0.1 --port 42173 --strictPort",
+      "cwd": "c:/Users/franc/payloadcatcher/frontend",
+      "port": 42173,
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_API_BASE_URL": "http://api.payloadcatcher.test"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "inbox-ui.spec.ts",
+      "file": "inbox-ui.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "QA-011 inbox UI flows",
+          "file": "inbox-ui.spec.ts",
+          "line": 101,
+          "column": 6,
+          "specs": [
+            {
+              "title": "renders the branded header and copies the callback URL",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 5520,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Copied' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Copied' })\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Copied' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Copied' })\u001b[22m\n\n    at c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts:113:64",
+                        "location": {
+                          "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                          "column": 64,
+                          "line": 113
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 111 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByLabel(\u001b[32m'Callback URL panel'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 112 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Copy URL'\u001b[39m })\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 113 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Copied'\u001b[39m }))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 114 |\u001b[39m\n \u001b[90m 115 |\u001b[39m     \u001b[36mconst\u001b[39m clipboardText \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mevaluate(() \u001b[33m=>\u001b[39m navigator\u001b[33m.\u001b[39mclipboard\u001b[33m.\u001b[39mreadText())\u001b[33m;\u001b[39m\n \u001b[90m 116 |\u001b[39m     expect(clipboardText)\u001b[33m.\u001b[39mtoBe(\u001b[33mHOOK_URL\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                            "column": 64,
+                            "line": 113
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Copied' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Copied' })\u001b[22m\n\n\n  111 |     await expect(page.getByLabel('Callback URL panel')).toBeVisible();\n  112 |     await page.getByRole('button', { name: 'Copy URL' }).click();\n> 113 |     await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();\n      |                                                                ^\n  114 |\n  115 |     const clipboardText = await page.evaluate(() => navigator.clipboard.readText());\n  116 |     expect(clipboardText).toBe(HOOK_URL);\n    at c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts:113:64"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-16T02:16:17.974Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "c:\\Users\\franc\\payloadcatcher\\frontend\\test-results\\inbox-ui-QA-011-inbox-UI-f-4d626-and-copies-the-callback-URL-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                        "column": 64,
+                        "line": 113
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "a13d62442c1f051d8c8c-115122b6d2728aacdf6e",
+              "file": "inbox-ui.spec.ts",
+              "line": 107,
+              "column": 3
+            },
+            {
+              "title": "uses the desktop split layout and updates the payload panel when a request is selected",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 548,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-16T02:16:24.479Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a13d62442c1f051d8c8c-4229d2882706738db389",
+              "file": "inbox-ui.spec.ts",
+              "line": 119,
+              "column": 3
+            },
+            {
+              "title": "stacks panels on mobile and supports paging plus empty search states",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Mobile layout assertions run in the mobile Chromium project only.",
+                      "location": {
+                        "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                        "line": 142,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 97,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-16T02:16:25.177Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Mobile layout assertions run in the mobile Chromium project only.",
+                          "location": {
+                            "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                            "line": 142,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a13d62442c1f051d8c8c-6d78511cd355b50b07bd",
+              "file": "inbox-ui.spec.ts",
+              "line": 141,
+              "column": 3
+            },
+            {
+              "title": "renders the branded header and copies the callback URL",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 5518,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Copied' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Copied' })\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Copied' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Copied' })\u001b[22m\n\n    at c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts:113:64",
+                        "location": {
+                          "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                          "column": 64,
+                          "line": 113
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 111 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByLabel(\u001b[32m'Callback URL panel'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 112 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Copy URL'\u001b[39m })\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 113 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Copied'\u001b[39m }))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 114 |\u001b[39m\n \u001b[90m 115 |\u001b[39m     \u001b[36mconst\u001b[39m clipboardText \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mevaluate(() \u001b[33m=>\u001b[39m navigator\u001b[33m.\u001b[39mclipboard\u001b[33m.\u001b[39mreadText())\u001b[33m;\u001b[39m\n \u001b[90m 116 |\u001b[39m     expect(clipboardText)\u001b[33m.\u001b[39mtoBe(\u001b[33mHOOK_URL\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                            "column": 64,
+                            "line": 113
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: 'Copied' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Copied' })\u001b[22m\n\n\n  111 |     await expect(page.getByLabel('Callback URL panel')).toBeVisible();\n  112 |     await page.getByRole('button', { name: 'Copy URL' }).click();\n> 113 |     await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();\n      |                                                                ^\n  114 |\n  115 |     const clipboardText = await page.evaluate(() => navigator.clipboard.readText());\n  116 |     expect(clipboardText).toBe(HOOK_URL);\n    at c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts:113:64"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-16T02:16:26.196Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "c:\\Users\\franc\\payloadcatcher\\frontend\\test-results\\inbox-ui-QA-011-inbox-UI-f-4d626-and-copies-the-callback-URL-mobile-chrome\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                        "column": 64,
+                        "line": 113
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "a13d62442c1f051d8c8c-081d029d75860caab8ee",
+              "file": "inbox-ui.spec.ts",
+              "line": 107,
+              "column": 3
+            },
+            {
+              "title": "uses the desktop split layout and updates the payload panel when a request is selected",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Desktop layout assertions run in the desktop Chromium project only.",
+                      "location": {
+                        "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                        "line": 120,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 173,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-16T02:16:33.141Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Desktop layout assertions run in the desktop Chromium project only.",
+                          "location": {
+                            "file": "c:\\Users\\franc\\payloadcatcher\\frontend\\tests\\e2e\\inbox-ui.spec.ts",
+                            "line": 120,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a13d62442c1f051d8c8c-f106b990fb51cf84df04",
+              "file": "inbox-ui.spec.ts",
+              "line": 119,
+              "column": 3
+            },
+            {
+              "title": "stacks panels on mobile and supports paging plus empty search states",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 520,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-16T02:16:33.500Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a13d62442c1f051d8c8c-1fe65414be936c38a4ee",
+              "file": "inbox-ui.spec.ts",
+              "line": 141,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-16T02:16:13.273Z",
+    "duration": 21299.245,
+    "expected": 2,
+    "skipped": 2,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

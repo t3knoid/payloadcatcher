@@ -60,7 +60,7 @@ class InboxProvisioningService:
             clsid=active_inbox.clsid,
             callback_url=self._build_hook_url(active_inbox.clsid),
             viewer_url=self._build_viewer_url(active_inbox.clsid),
-            expires_at=active_inbox.expires_at,
+            expires_at=self._response_datetime(active_inbox.expires_at),
             new_session=new_session,
         )
 
@@ -161,6 +161,11 @@ class InboxProvisioningService:
 
     def _build_viewer_url(self, clsid: str) -> str:
         return f"{self.settings.base_url.rstrip('/')}/inbox/{clsid}"
+
+    def _response_datetime(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
     def _primary_language(self, accept_language: str | None) -> str | None:
         if not accept_language:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+import re
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -14,6 +15,11 @@ from app.core.config import Settings, get_settings
 from app.persistence.base import Base
 from app.persistence.models import VisitMetadata
 from app.persistence.session import get_db_session
+
+
+UUID4_LOWERCASE_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 
 
 def _build_test_app(*, trusted_proxies: list[str] | None = None) -> tuple[FastAPI, sessionmaker[Session]]:
@@ -63,8 +69,10 @@ def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) ->
     assert "payloadcatcher_session=" in first_response.headers["set-cookie"]
     first_payload = first_response.json()
     assert first_payload["new_session"] is True
-    assert first_payload["callback_url"].endswith(f"/hook/{first_payload['clsid']}")
-    assert first_payload["viewer_url"].endswith(f"/inbox/{first_payload['clsid']}")
+    assert UUID4_LOWERCASE_PATTERN.match(first_payload["clsid"])
+    assert first_payload["callback_url"] == f"https://payloadcat.ch/hook/{first_payload['clsid']}"
+    assert first_payload["viewer_url"] == f"https://payloadcat.ch/inbox/{first_payload['clsid']}"
+    assert first_payload["expires_at"] == "2026-05-16T12:00:00Z"
 
     second_response = client.get("/")
 
@@ -73,6 +81,8 @@ def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) ->
     assert second_payload["new_session"] is False
     assert second_payload["clsid"] == first_payload["clsid"]
     assert second_payload["callback_url"] == first_payload["callback_url"]
+    assert second_payload["viewer_url"] == first_payload["viewer_url"]
+    assert second_payload["expires_at"] == first_payload["expires_at"]
 
     with session_factory() as session:
         assert session.query(VisitMetadata).count() == 2
@@ -98,6 +108,32 @@ def test_expired_session_rotates_to_new_inbox(monkeypatch) -> None:
     assert second_response.status_code == 200
     assert second_payload["new_session"] is True
     assert second_payload["clsid"] != first_payload["clsid"]
+    assert second_payload["callback_url"] != first_payload["callback_url"]
+    assert second_payload["viewer_url"] != first_payload["viewer_url"]
+
+
+def test_exact_expiration_boundary_rotates_inbox(monkeypatch) -> None:
+    current_time = {"value": datetime(2026, 5, 15, 12, 0, tzinfo=UTC)}
+
+    monkeypatch.setattr(
+        "app.services.inbox_provisioning.utc_now",
+        lambda: current_time["value"],
+    )
+    app, _ = _build_test_app()
+    client = TestClient(app, base_url="https://testserver")
+
+    first_response = client.get("/")
+    first_payload = first_response.json()
+
+    current_time["value"] = current_time["value"] + timedelta(hours=24)
+    second_response = client.get("/")
+    second_payload = second_response.json()
+
+    assert second_response.status_code == 200
+    assert second_payload["new_session"] is True
+    assert second_payload["clsid"] != first_payload["clsid"]
+    assert second_payload["callback_url"] != first_payload["callback_url"]
+    assert second_payload["viewer_url"] != first_payload["viewer_url"]
 
 
 def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(monkeypatch) -> None:

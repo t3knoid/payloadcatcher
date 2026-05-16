@@ -1,0 +1,26 @@
+import { createRouter, createWebHistory } from 'vue-router';
+
+import HomeView from '@/views/HomeView.vue';
+import InboxView from '@/views/InboxView.vue';
+
+export const buildRouter = () => {
+  return createRouter({
+    history: createWebHistory(),
+    routes: [
+      {
+        path: '/',
+        name: 'home',
+        component: HomeView,
+      },
+      {
+        path: '/inbox/:clsid',
+        name: 'inbox',
+        component: InboxView,
+        props: true,
+      },
+    ],
+    scrollBehavior() {
+      return { top: 0 };
+    },
+  });
+};
