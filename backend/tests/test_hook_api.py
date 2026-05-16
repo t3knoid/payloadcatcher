@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+import anyio
 import json
-import logging
 from pathlib import Path
 import tempfile
-from threading import Lock
-from time import sleep
+from threading import Event
+from time import perf_counter, sleep
 from typing import cast
 import uuid
 
@@ -20,6 +20,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.requests import Request
+from starlette.types import Message
 
 from app.api.routes.hook import ingest_webhook
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
@@ -373,68 +374,122 @@ def test_post_hook_persists_concurrent_requests_without_data_loss() -> None:
         session_factory.kw["bind"].dispose()
 
 
-def test_post_hook_burst_ack_latency_stays_within_target(caplog, monkeypatch) -> None:
-    concurrent_requests = 16
+@pytest.mark.anyio
+async def test_post_hook_sends_response_before_slow_background_persistence(monkeypatch) -> None:
     persist_delay_seconds = 0.25
     clsid = "550e8400-e29b-41d4-a716-446655440010"
     persist_delay_ms = persist_delay_seconds * 1000
     persisted_request_ids: list[str] = []
-    persisted_request_ids_lock = Lock()
+    background_started = Event()
+    background_finished = Event()
+    response_messages: list[Message] = []
+    response_sent = anyio.Event()
+    app_completed = anyio.Event()
+    response_sent_at: float | None = None
+    app_completed_at: float | None = None
+    body = b'{"index": 1}'
+    body_delivered = False
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        database_path = Path(temp_dir) / "hook-latency.db"
-        app, session_factory = _build_test_app(
-            rate_limit_per_minute=100,
-            database_url=f"sqlite+pysqlite:///{database_path.as_posix()}",
-            use_static_pool=False,
-            pool_size=concurrent_requests,
-            max_overflow=0,
-        )
-        try:
-            _seed_inbox(session_factory, clsid)
+    app, session_factory = _build_test_app(rate_limit_per_minute=100)
 
-            def slow_persist(self: WebhookIngestionService, prepared: PreparedWebhookIngestion) -> None:
-                sleep(persist_delay_seconds)
-                with persisted_request_ids_lock:
-                    persisted_request_ids.append(prepared.request_id)
+    try:
+        _seed_inbox(session_factory, clsid)
 
-            monkeypatch.setattr(WebhookIngestionService, "persist_ingestion", slow_persist)
+        def slow_persist(self: WebhookIngestionService, prepared: PreparedWebhookIngestion) -> None:
+            background_started.set()
+            sleep(persist_delay_seconds)
+            persisted_request_ids.append(prepared.request_id)
+            background_finished.set()
 
-            def post_event(index: int) -> tuple[int, str]:
-                with TestClient(app) as client:
-                    response = client.post(
-                        f"/hook/{clsid}",
-                        json={"index": index},
-                        headers={"x-forwarded-for": f"203.0.113.{index + 10}"},
-                    )
-                return response.status_code, response.json()["request_id"]
+        monkeypatch.setattr(WebhookIngestionService, "persist_ingestion", slow_persist)
 
-            with caplog.at_level(logging.INFO, logger="payloadcatcher.request"):
-                with ThreadPoolExecutor(max_workers=concurrent_requests) as executor:
-                    results = list(executor.map(post_event, range(concurrent_requests)))
+        async def receive() -> dict[str, object]:
+            nonlocal body_delivered
+            if body_delivered:
+                return {
+                    "type": "http.request",
+                    "body": b"",
+                    "more_body": False,
+                }
 
-            assert [status for status, _ in results] == [200] * concurrent_requests
+            body_delivered = True
+            return {
+                "type": "http.request",
+                "body": body,
+                "more_body": False,
+            }
 
-            request_durations_ms = sorted(
-                float(record.args[2])
-                for record in caplog.records
-                if record.name == "payloadcatcher.request"
-                and len(record.args) == 3
-                and record.args[0] == "POST"
-                and record.args[1] == f"/hook/{clsid}"
+        async def send(message: Message) -> None:
+            nonlocal response_sent_at
+            response_messages.append(message)
+            if message["type"] == "http.response.body" and not message.get("more_body", False):
+                response_sent_at = perf_counter()
+                response_sent.set()
+
+        async def invoke_app() -> None:
+            nonlocal app_completed_at
+            await app(
+                {
+                    "type": "http",
+                    "asgi": {"version": "3.0"},
+                    "http_version": "1.1",
+                    "method": "POST",
+                    "scheme": "http",
+                    "path": f"/hook/{clsid}",
+                    "raw_path": f"/hook/{clsid}".encode("ascii"),
+                    "query_string": b"",
+                    "root_path": "",
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"x-forwarded-for", b"203.0.113.10"),
+                    ],
+                    "client": ("testclient", 12345),
+                    "server": ("testserver", 80),
+                },
+                receive,
+                send,
             )
+            app_completed_at = perf_counter()
+            app_completed.set()
 
-            assert len(request_durations_ms) == concurrent_requests
+        started_at = perf_counter()
 
-            p95_index = max(0, (concurrent_requests * 95 + 99) // 100 - 1)
-            p95_latency_ms = request_durations_ms[p95_index]
-            max_latency_ms = request_durations_ms[-1]
+        async with anyio.create_task_group() as task_group:
+            task_group.start_soon(invoke_app)
 
-            assert p95_latency_ms < persist_delay_ms * 0.5
-            assert max_latency_ms < persist_delay_ms * 0.75
-            assert sorted(request_id for _, request_id in results) == sorted(persisted_request_ids)
-        finally:
-            session_factory.kw["bind"].dispose()
+            await response_sent.wait()
+            assert response_sent_at is not None
+            assert not app_completed.is_set()
+
+            await anyio.sleep(persist_delay_seconds / 5)
+
+            assert background_started.is_set()
+            assert not app_completed.is_set()
+
+            await app_completed.wait()
+
+        response_start = next(
+            message
+            for message in response_messages
+            if message["type"] == "http.response.start"
+        )
+        response_body = b"".join(
+            cast(bytes, message.get("body", b""))
+            for message in response_messages
+            if message["type"] == "http.response.body"
+        )
+        response_payload = json.loads(response_body.decode("utf-8"))
+        assert response_sent_at is not None
+
+        assert response_start["status"] == 200
+        assert response_payload["status"] == "accepted"
+        assert background_finished.is_set()
+        assert persisted_request_ids == [response_payload["request_id"]]
+        assert ((response_sent_at - started_at) * 1000) < persist_delay_ms * 0.5
+        assert app_completed_at is not None
+        assert ((app_completed_at - started_at) * 1000) >= persist_delay_ms * 0.75
+    finally:
+        session_factory.kw["bind"].dispose()
 
 
 @pytest.mark.anyio
