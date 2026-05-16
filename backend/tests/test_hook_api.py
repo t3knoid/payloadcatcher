@@ -375,121 +375,155 @@ def test_post_hook_persists_concurrent_requests_without_data_loss() -> None:
 
 
 @pytest.mark.anyio
-async def test_post_hook_sends_response_before_slow_background_persistence(monkeypatch) -> None:
+async def test_post_hook_burst_requests_send_responses_before_slow_background_persistence(monkeypatch) -> None:
+    concurrent_requests = 8
     persist_delay_seconds = 0.25
     clsid = "550e8400-e29b-41d4-a716-446655440010"
     persist_delay_ms = persist_delay_seconds * 1000
     persisted_request_ids: list[str] = []
     background_started = Event()
     background_finished = Event()
-    response_messages: list[Message] = []
-    response_sent = anyio.Event()
-    app_completed = anyio.Event()
-    response_sent_at: float | None = None
-    app_completed_at: float | None = None
-    body = b'{"index": 1}'
-    body_delivered = False
 
-    app, session_factory = _build_test_app(rate_limit_per_minute=100)
-
-    try:
-        _seed_inbox(session_factory, clsid)
-
-        def slow_persist(self: WebhookIngestionService, prepared: PreparedWebhookIngestion) -> None:
-            background_started.set()
-            sleep(persist_delay_seconds)
-            persisted_request_ids.append(prepared.request_id)
-            background_finished.set()
-
-        monkeypatch.setattr(WebhookIngestionService, "persist_ingestion", slow_persist)
-
-        async def receive() -> dict[str, object]:
-            nonlocal body_delivered
-            if body_delivered:
-                return {
-                    "type": "http.request",
-                    "body": b"",
-                    "more_body": False,
-                }
-
-            body_delivered = True
-            return {
-                "type": "http.request",
-                "body": body,
-                "more_body": False,
-            }
-
-        async def send(message: Message) -> None:
-            nonlocal response_sent_at
-            response_messages.append(message)
-            if message["type"] == "http.response.body" and not message.get("more_body", False):
-                response_sent_at = perf_counter()
-                response_sent.set()
-
-        async def invoke_app() -> None:
-            nonlocal app_completed_at
-            await app(
-                {
-                    "type": "http",
-                    "asgi": {"version": "3.0"},
-                    "http_version": "1.1",
-                    "method": "POST",
-                    "scheme": "http",
-                    "path": f"/hook/{clsid}",
-                    "raw_path": f"/hook/{clsid}".encode("ascii"),
-                    "query_string": b"",
-                    "root_path": "",
-                    "headers": [
-                        (b"content-type", b"application/json"),
-                        (b"x-forwarded-for", b"203.0.113.10"),
-                    ],
-                    "client": ("testclient", 12345),
-                    "server": ("testserver", 80),
-                },
-                receive,
-                send,
-            )
-            app_completed_at = perf_counter()
-            app_completed.set()
-
-        started_at = perf_counter()
-
-        async with anyio.create_task_group() as task_group:
-            task_group.start_soon(invoke_app)
-
-            await response_sent.wait()
-            assert response_sent_at is not None
-            assert not app_completed.is_set()
-
-            await anyio.sleep(persist_delay_seconds / 5)
-
-            assert background_started.is_set()
-            assert not app_completed.is_set()
-
-            await app_completed.wait()
-
-        response_start = next(
-            message
-            for message in response_messages
-            if message["type"] == "http.response.start"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        database_path = Path(temp_dir) / "hook-latency.db"
+        app, session_factory = _build_test_app(
+            rate_limit_per_minute=100,
+            database_url=f"sqlite+pysqlite:///{database_path.as_posix()}",
+            use_static_pool=False,
+            pool_size=concurrent_requests,
+            max_overflow=0,
         )
-        response_body = b"".join(
-            cast(bytes, message.get("body", b""))
-            for message in response_messages
-            if message["type"] == "http.response.body"
-        )
-        response_payload = json.loads(response_body.decode("utf-8"))
-        assert response_sent_at is not None
 
-        assert response_start["status"] == 200
-        assert response_payload["status"] == "accepted"
-        assert background_finished.is_set()
-        assert persisted_request_ids == [response_payload["request_id"]]
-        assert ((response_sent_at - started_at) * 1000) < persist_delay_ms * 0.5
-        assert app_completed_at is not None
-        assert ((app_completed_at - started_at) * 1000) >= persist_delay_ms * 0.75
-    finally:
-        session_factory.kw["bind"].dispose()
+        try:
+            _seed_inbox(session_factory, clsid)
+
+            def slow_persist(self: WebhookIngestionService, prepared: PreparedWebhookIngestion) -> None:
+                background_started.set()
+                sleep(persist_delay_seconds)
+                persisted_request_ids.append(prepared.request_id)
+                if len(persisted_request_ids) == concurrent_requests:
+                    background_finished.set()
+
+            monkeypatch.setattr(WebhookIngestionService, "persist_ingestion", slow_persist)
+
+            async def run_request(index: int) -> tuple[float, float, dict[str, object]]:
+                response_messages: list[Message] = []
+                response_sent = anyio.Event()
+                app_completed = anyio.Event()
+                response_sent_at: float | None = None
+                app_completed_at: float | None = None
+                body = json.dumps({"index": index}).encode("utf-8")
+                body_delivered = False
+
+                async def receive() -> dict[str, object]:
+                    nonlocal body_delivered
+                    if body_delivered:
+                        return {
+                            "type": "http.request",
+                            "body": b"",
+                            "more_body": False,
+                        }
+
+                    body_delivered = True
+                    return {
+                        "type": "http.request",
+                        "body": body,
+                        "more_body": False,
+                    }
+
+                async def send(message: Message) -> None:
+                    nonlocal response_sent_at
+                    response_messages.append(message)
+                    if message["type"] == "http.response.body" and not message.get("more_body", False):
+                        response_sent_at = perf_counter()
+                        response_sent.set()
+
+                async def invoke_app() -> None:
+                    nonlocal app_completed_at
+                    await app(
+                        {
+                            "type": "http",
+                            "asgi": {"version": "3.0"},
+                            "http_version": "1.1",
+                            "method": "POST",
+                            "scheme": "http",
+                            "path": f"/hook/{clsid}",
+                            "raw_path": f"/hook/{clsid}".encode("ascii"),
+                            "query_string": b"",
+                            "root_path": "",
+                            "headers": [
+                                (b"content-type", b"application/json"),
+                                (b"x-forwarded-for", f"203.0.113.{index + 10}".encode("ascii")),
+                            ],
+                            "client": ("testclient", 12345),
+                            "server": ("testserver", 80),
+                        },
+                        receive,
+                        send,
+                    )
+                    app_completed_at = perf_counter()
+                    app_completed.set()
+
+                started_at = perf_counter()
+
+                async with anyio.create_task_group() as task_group:
+                    task_group.start_soon(invoke_app)
+
+                    await response_sent.wait()
+                    assert response_sent_at is not None
+                    assert not app_completed.is_set()
+
+                    await anyio.sleep(persist_delay_seconds / 5)
+
+                    assert background_started.is_set()
+                    assert not app_completed.is_set()
+
+                    await app_completed.wait()
+
+                response_start = next(
+                    message
+                    for message in response_messages
+                    if message["type"] == "http.response.start"
+                )
+                response_body = b"".join(
+                    cast(bytes, message.get("body", b""))
+                    for message in response_messages
+                    if message["type"] == "http.response.body"
+                )
+                response_payload = json.loads(response_body.decode("utf-8"))
+                assert response_sent_at is not None
+                assert app_completed_at is not None
+                assert response_start["status"] == 200
+                assert response_payload["status"] == "accepted"
+                return (
+                    (response_sent_at - started_at) * 1000,
+                    (app_completed_at - started_at) * 1000,
+                    response_payload,
+                )
+
+            results: list[tuple[float, float, dict[str, object]]] = []
+
+            async def collect_request(index: int) -> None:
+                results.append(await run_request(index))
+
+            async with anyio.create_task_group() as task_group:
+                for index in range(concurrent_requests):
+                    task_group.start_soon(collect_request, index)
+
+            response_send_times_ms = sorted(result[0] for result in results)
+            app_completion_times_ms = sorted(result[1] for result in results)
+            response_payloads = [result[2] for result in results]
+            response_request_ids = [cast(str, payload["request_id"]) for payload in response_payloads]
+            p95_index = max(0, (concurrent_requests * 95 + 99) // 100 - 1)
+
+            assert background_finished.is_set()
+            assert len(set(response_request_ids)) == concurrent_requests
+            assert sorted(response_request_ids) == sorted(persisted_request_ids)
+            assert response_send_times_ms[p95_index] < persist_delay_ms * 0.5
+            assert response_send_times_ms[-1] < persist_delay_ms * 0.75
+            assert app_completion_times_ms[0] >= persist_delay_ms * 0.75
+        finally:
+            session_factory.kw["bind"].dispose()
 
 
 @pytest.mark.anyio
