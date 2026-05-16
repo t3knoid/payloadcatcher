@@ -1,0 +1,190 @@
+---
+description: "Always-on PayloadCatcher core rules covering global security, trust boundaries, logging, privacy, architecture, and testing expectations."
+alwaysApply: true
+globs:
+  - "**/*"
+---
+
+# PayloadCatcher - Core Rules
+
+This file defines global, cross-cutting, non-negotiable rules that apply to every part of the PayloadCatcher codebase.
+Backend-, frontend-, migration-, and shell-specific rules live in their respective addenda.
+
+---
+
+## 1. Rule Priority
+
+When rules conflict, follow this order:
+
+1. Security, privacy, trust boundaries, and safe handling of untrusted inbound data
+2. Architecture boundaries, provider-agnostic behavior, and data integrity
+3. Task requirements and established repository patterns
+4. Tests and validation
+5. Style and tooling
+
+If a requested change conflicts with security, privacy, trust boundaries, or provider-agnostic behavior, preserve safety and ask.
+
+---
+
+## 2. Working Mode
+
+Always:
+
+- Inspect nearby code before changing patterns.
+- Prefer the smallest correct change.
+- Preserve existing abstractions unless restructuring is explicitly required.
+- Add or update focused tests for changed behavior.
+- Validate the narrowest affected surface first.
+- Match existing architectural, API, and documentation patterns.
+
+Do not:
+
+- refactor unrelated code
+- change public behavior unless required
+- introduce new dependencies without clear need
+- expose internal paths, raw secrets, raw exception strings, or unsafe implementation details in logs, API responses, or documentation
+
+---
+
+## 3. Core Invariants (Global)
+
+PayloadCatcher is a provider-agnostic webhook capture and inspection platform.
+All changes must preserve:
+
+- provider-agnostic ingestion
+- byte-safe payload handling
+- strict trust-boundary separation
+- auditability and observability
+- secure defaults
+- future auth and account extensibility
+
+These invariants apply to every layer.
+
+---
+
+## 4. Trust Boundaries (Global)
+
+- System layer (trusted)
+  - validates, stores, redacts, and serves webhook data
+  - writes logs and audit-style records
+  - enforces authentication, authorization, and lifecycle rules
+  - is the only layer allowed to touch the database or infrastructure adapters directly
+
+- UI layer (untrusted)
+  - communicates only through the API
+  - must never touch the database directly
+  - must never be treated as a source of truth for business logic or security decisions
+
+- Architecture
+  - routers validate input, apply auth boundaries, and delegate to services
+  - business logic belongs in services, not routers
+  - persistence code handles database access only
+  - infrastructure code handles external I/O, queues, network interactions, and OS-level behavior
+
+- Identity and lifecycle
+  - callback URLs use `https://payloadcat.ch/hook/{clsid}`
+  - viewer URLs use `https://payloadcat.ch/inbox/{clsid}`
+  - `clsid` values are lowercase UUIDv4 strings
+  - callback URLs remain valid for 24 hours and rotate after expiration
+  - cookie-first continuity must not treat source IP as the sole identity key
+
+---
+
+## 5. Security, Logging, Privacy, And Error Safety (Global)
+
+### 5.1 Security
+
+Always:
+
+- treat all inbound data as untrusted
+- sanitize and normalize user input used in identifiers, headers, paths, and query parameters
+- prevent traversal, injection, replay, and malformed-input issues
+- redact sensitive fields from logs, responses, and public views
+- use safe, consistent error envelopes for non-2xx responses
+
+Never:
+
+- use `eval`, `exec`, or dynamic code execution
+- enable insecure defaults such as debug mode in production or unsafe open CORS
+- leak credentials, internal paths, raw provider errors, raw exception strings, or unsafe OS details
+
+### 5.2 Logging
+
+- Use structured logging with clear event names and context.
+- Logging wrappers must forward all supported arguments and not drop context.
+- Log:
+  - handled failure paths
+  - degraded behavior
+  - retry attempts and exhaustion
+  - unexpected states
+  - logic inconsistencies that could otherwise fail silently
+- Do not rely solely on unhandled-exception logging.
+- Prefer safe operator-facing summaries at info, warning, and error levels.
+- Keep raw provider errors, raw exception strings, secrets, and unsafe internal details out of normal logs.
+- Debug logs may include richer diagnostic detail when necessary, but still avoid unnecessary secret exposure.
+
+### 5.3 Privacy And Redaction
+
+- Metadata collection must remain selective, sanitized, and GPS-gated by explicit consent.
+- Public viewer responses must redact network identifiers by default.
+- Logs and persisted audit-style records must store sanitized, structured error information rather than raw provider text.
+- Absolute paths, raw mount paths, raw secrets, and raw exception strings must not appear in public or operator-facing records unless explicitly redacted and justified.
+
+---
+
+## 6. Tests And Validation (Global)
+
+All new behavior must include tests.
+
+Use pytest conventions for backend code:
+
+- use `pytest`, not `unittest`
+- use fixtures instead of `setUp` and `tearDown`
+- use bare `assert`
+- use `pytest.raises`
+- use snake_case test names
+
+Tests must cover:
+
+- affected auth and permission behavior where relevant
+- input validation and malformed input handling
+- error cases and safe error envelopes
+- privacy and redaction behavior
+- edge cases
+- concurrency or retry behavior when relevant
+
+---
+
+## 7. Tooling And CI (Global)
+
+Code should follow the tooling used by the repository and touched surface.
+
+CI expectations:
+
+- run the narrowest relevant checks first
+- all new behavior must be covered by automated checks where practical
+- backend, frontend, integration, and E2E checks must pass when relevant
+- migration and schema validation must pass when relevant
+- documentation and generated API docs must stay aligned when API behavior changes
+
+---
+
+## 8. Comments And Documentation
+
+- Comments and documentation must match actual behavior.
+- When behavior changes, update comments and nearby documentation in the same change.
+- Do not leave stricter or looser comments behind.
+- Phrase documentation and comments as direct current-state expectations rather than old-versus-new comparisons.
+- Avoid wording such as `now`, `no longer`, `instead of`, or `rather than` unless the comparison is required for safe guidance.
+- Fix mismatches immediately.
+
+---
+
+## 9. Addenda Routing
+
+Additional scoped rules live beside this file:
+
+- `backend.mdc` - Python backend, API, services, persistence, infrastructure, and backend tests
+- `frontend.mdc` - Vue, templates, CSS, SPA routing, and frontend tests
+
+This file remains the always-on baseline for all work in the repository.

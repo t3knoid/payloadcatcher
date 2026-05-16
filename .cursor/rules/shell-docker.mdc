@@ -1,0 +1,167 @@
+---
+description: "Shell, subprocess, Docker, Compose, and environment-handling rules for PayloadCatcher system-layer execution."
+alwaysApply: false
+globs:
+  - "**/*.sh"
+  - "Dockerfile"
+  - "**/Dockerfile"
+  - "docker-compose*.yml"
+  - "docker-compose*.yaml"
+  - "deploy/**/*"
+  - "scripts/**/*"
+---
+
+# PayloadCatcher - Shell And Docker Addendum
+
+Apply when touching shell scripts, subprocess code, Dockerfiles, entrypoints, Compose files, or environment-file handling.
+
+This file governs system-layer execution safety, subprocess correctness, container hardening, and deployment hygiene.
+Global security, privacy, trust-boundary, logging, and documentation rules remain governed by `core.mdc`, while backend architecture and service boundaries remain governed by `backend.mdc`.
+Any future installer-specific host bootstrap or native install rules belong in a separate installer-focused addendum rather than this file.
+
+---
+
+## 1. Shell And Subprocess Safety
+
+### 1.1 Forbidden Patterns
+
+Never:
+
+- use `shell=True` in Python subprocess calls
+- use backticks for command substitution
+- use unquoted variable expansion in path-sensitive or destructive commands
+- rely on GNU-only flags unless explicitly documented as supported
+- perform silent destructive operations
+- parse `.env` files with whitespace-collapsing or unsafe splitting
+- embed secrets in scripts or Dockerfiles
+- assume interactive shells or TTY availability
+
+### 1.2 Required Patterns
+
+Always:
+
+- quote all variable expansions (`"$VAR"`)
+- use `$(cmd)` instead of backticks
+- use `set -euo pipefail` in Bash
+- use `|| exit 1` in POSIX `sh` where needed
+- use `pathlib` or safe equivalents for path construction in Python
+- validate and sanitize all paths before use
+- use explicit argument lists for subprocess calls
+- enforce timeouts for subprocess operations
+- log sanitized error information instead of raw stderr or unsafe provider text
+
+### 1.3 Subprocess Execution Rules
+
+- All subprocess calls must go through infrastructure wrappers when they are part of application behavior.
+- Commands must be passed as lists, not strings.
+- No command may rely on implicit `PATH` resolution when a stable absolute path is available.
+- All subprocess failures must be surfaced as structured errors, not raw stderr dumps.
+- Subprocess output must be sanitized before logging or returning upward.
+
+---
+
+## 2. Dockerfile Rules
+
+### 2.1 Base Image And Build Hygiene
+
+- Pin base images to specific versions or digests.
+- Use multi-stage builds to keep production images minimal.
+- Production images must not contain compilers or build toolchains.
+- Prefer minimal base images compatible with the runtime stack.
+- Avoid `COPY . .` unless explicitly justified; copy only required paths.
+- Exclude heavy, local-only, or sensitive paths via `.dockerignore`.
+
+### 2.2 Security Requirements
+
+- Do not embed secrets, tokens, or credentials.
+- Do not use `chmod -R 777`.
+- Set an explicit non-root `USER` unless root is required and documented.
+- Use `pip install --no-cache-dir` where pip is used in container builds.
+- Do not install unnecessary packages.
+- Define a Dockerfile `HEALTHCHECK` for long-running services when the image is expected to run independently.
+
+### 2.3 Determinism And Reproducibility
+
+- Avoid non-deterministic build steps.
+- Avoid downloading unpinned remote artifacts.
+- Document required build arguments in README or deployment docs.
+
+---
+
+## 3. Entrypoints And Startup Scripts
+
+### 3.1 Entrypoint Rules
+
+Entrypoints must:
+
+- use exec form (`exec "$@"`) for process handoff where appropriate
+- use `set -euo pipefail` in Bash entrypoints
+- quote all variables
+- validate required environment variables before use
+- avoid inline logic that belongs in application services
+- avoid infinite loops without explicit sleep or backoff
+- log sanitized startup failures
+
+### 3.2 Environment Handling
+
+- Environment variables must be documented in `.env.example` when they are part of local or container setup.
+- Scripts must not assume variables are set; validate explicitly.
+- Avoid parsing `.env` files manually; prefer shell-safe or framework-supported loading.
+- Never echo secrets or sensitive values.
+
+---
+
+## 4. Docker Compose Rules
+
+### 4.1 Safety And Security
+
+- Do not mount the Docker socket.
+- Do not bind-mount sensitive host paths.
+- Use explicit resource limits when the Compose format and deployment target support them.
+- Define healthchecks for long-running services.
+- Avoid privileged containers unless explicitly required and documented.
+
+### 4.2 Environment And Configuration
+
+- Do not use nested variable interpolation in Compose files.
+- Document all environment variables in `.env.example`.
+- Avoid environment-variable defaults that mask configuration errors.
+- Keep local defaults aligned with the repository's documented ports and reverse-proxy expectations.
+
+### 4.3 Networking And Volumes
+
+- Use named volumes instead of bind mounts unless bind mounts are required.
+- Avoid exposing ports unnecessarily.
+- Use internal networks for inter-service communication where relevant.
+
+---
+
+## 5. Deployment And Script Hygiene
+
+- Deployment scripts must be idempotent.
+- Scripts must fail fast and loudly on unexpected conditions.
+- No script may assume a specific working directory; use resolved absolute paths.
+- Destructive operations must require explicit confirmation, flags, or tightly scoped non-interactive intent.
+- Deployment artifacts must not contain secrets or environment-specific absolute paths.
+
+---
+
+## 6. PayloadCatcher-Specific Expectations
+
+- Local backend API and Swagger docs are served on port `8000`.
+- The site-facing service is served on port `8080` by default and must remain compatible with reverse-proxy deployment.
+- Compose and container configuration must not drift from documented defaults without updating the relevant docs in the same change.
+- Shell and container changes must preserve provider-agnostic webhook handling and must not bake provider-specific assumptions into infrastructure layers.
+
+---
+
+## 7. Out Of Scope
+
+The following belong to other rule files and must not be redefined here:
+
+- backend business logic, API routing, service boundaries, and persistence rules -> `backend.mdc`
+- global security, logging, privacy, testing, and documentation rules -> `core.mdc`
+- frontend rules -> `frontend.mdc`
+- installer-specific native setup or host bootstrap rules -> a future installer-focused addendum
+
+This file governs shell, subprocess, Docker, Compose, and environment-handling safety only.
