@@ -252,6 +252,30 @@ describe('inbox store', () => {
     });
   });
 
+  it('keeps bootstrap successful when initial inbox hydration fails', async () => {
+    const store = useInboxStore();
+
+    const bootstrapPayload = {
+      clsid: CLSID,
+      callback_url: `https://payloadcat.ch/hook/${CLSID}`,
+      viewer_url: `https://payloadcat.ch/inbox/${CLSID}`,
+      expires_at: '2026-05-16T12:00:00Z',
+      new_session: true,
+    };
+
+    bootstrapInbox.mockResolvedValueOnce(bootstrapPayload);
+    getInbox.mockRejectedValueOnce(new Error('Viewer temporarily unavailable.'));
+
+    const result = await store.bootstrapHome({
+      timezone: 'America/New_York',
+    });
+
+    expect(result).toEqual(bootstrapPayload);
+    expect(store.callbackUrl).toBe(bootstrapPayload.callback_url);
+    expect(store.viewerUrl).toBe(bootstrapPayload.viewer_url);
+    expect(store.error).toBe('Unable to load inbox data.');
+  });
+
   it('submits precise visit metadata through the follow-up body endpoint', async () => {
     const store = useInboxStore();
 

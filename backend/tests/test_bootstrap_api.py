@@ -334,6 +334,40 @@ def test_visit_metadata_uses_independent_rate_limit_scope() -> None:
     assert visit.consent is True
 
 
+def test_visit_metadata_does_not_persist_gps_when_collection_is_disabled() -> None:
+    app, session_factory = _build_test_app(trusted_proxies=["testclient"])
+    overridden_settings = Settings(
+        _env_file=None,
+        trusted_proxies=["testclient"],
+        gps_collection_enabled=False,
+    )
+    app.dependency_overrides[get_settings] = lambda: overridden_settings
+    client = TestClient(app, base_url="https://testserver")
+
+    bootstrap_response = client.get("/")
+
+    assert bootstrap_response.status_code == 200
+
+    metadata_response = client.post(
+        "/visit-metadata",
+        json={
+            "gps_consent": True,
+            "gps_lat": 35.77959,
+            "gps_lng": -78.63818,
+        },
+    )
+
+    assert metadata_response.status_code == 204
+
+    with session_factory() as session:
+        visit = session.scalar(select(VisitMetadata))
+
+    assert visit is not None
+    assert visit.gps_lat is None
+    assert visit.gps_lng is None
+    assert visit.consent is False
+
+
 def test_openapi_includes_bootstrap_route() -> None:
     app, _ = _build_test_app()
     client = TestClient(app)
