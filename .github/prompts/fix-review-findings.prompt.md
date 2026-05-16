@@ -18,6 +18,7 @@ Use the user argument as the source of truth for the findings to address. Treat 
 Read and apply all of the following before any analysis, planning, code edits, or test changes:
 
 - `.github/copilot-instructions.md`
+- `docs/config.md`
 - `docs/api.md`
 - `docs/requirements.md`
 - `docs/route-contract.md`
@@ -45,6 +46,7 @@ Your job is to:
 - add or update focused tests for each fixed issue when practical
 - re-run the narrowest checks that prove the finding is resolved
 - update documentation when the fix changes API behavior, setup, operations, or UI expectations
+- update `docs/config.md` when the fix changes configuration keys, defaults, expected types, or runtime/deployment config behavior
 - update the qa-test-guides.md file when the fix changes user-facing behavior or UI states
 - update the e2e tests when the fix changes user-facing behavior or UI states
 
@@ -91,6 +93,7 @@ Unless the reviewed change explicitly alters the specification and the docs are 
 - signature verification uses deterministic rules, constant-time comparison, bounded skew, and replay protection
 - future user-account extensibility must not break anonymous capture flows
 - any API implementation or API modification must update `docs/api.md`
+- any configuration addition, removal, rename, default change, expected-type change, or runtime config behavior change must update `docs/config.md`
 
 -------------------------------------------------------------------------------
 ## Required workflow
@@ -123,6 +126,7 @@ Review the fixes for any required documentation updates.
 Check for updates in places such as:
 
 - `README.md`
+- `docs/config.md`
 - `docs/api.md`
 - files under `docs/`
 - setup and deployment guidance

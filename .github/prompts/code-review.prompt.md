@@ -50,6 +50,7 @@ Prioritize correctness, security, async safety, data integrity, and test complet
    - Schema/index choices support listing by inbox and time.
 7. Configuration and operational controls
    - Defaults are configurable via `.env` and documented.
+   - Configuration additions, removals, renames, default changes, and expected-type changes update `docs/config.md`.
    - No hardcoded environment-specific constants.
 8. Testing quality
    - Unit tests cover service logic and validation.

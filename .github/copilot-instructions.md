@@ -147,6 +147,8 @@ All webhook providers must be handled through a common, provider-agnostic ingest
 4. Document all security-relevant defaults and tradeoffs clearly.
 5. Update comments and nearby documentation in the same change when behavior changes.
 6. Avoid wording such as `now`, `no longer`, `instead of`, or `rather than` unless the comparison is required for safe guidance.
+7. Treat `docs/config.md` as the canonical configuration inventory for supported environment and runtime settings.
+8. Any addition, removal, rename, default change, expected-type change, or operational behavior change for a configuration value must update `docs/config.md` in the same change.
 
 ## 14. Code Review Priorities
 1. Correctness under malformed input.
@@ -209,3 +211,4 @@ All webhook providers must be handled through a common, provider-agnostic ingest
 6. Production images must avoid unnecessary packages, embedded secrets, and root execution unless explicitly required and documented.
 7. Docker Compose files must avoid Docker socket mounts, sensitive host bind mounts, nested variable interpolation, and unnecessary port exposure.
 8. Shell, container, and Compose changes must update environment and operational docs when documented defaults change.
+9. Shell, container, and Compose changes that add, remove, or alter configuration values must keep `docs/config.md` aligned in the same change.

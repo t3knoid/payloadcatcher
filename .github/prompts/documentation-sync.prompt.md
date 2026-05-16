@@ -11,6 +11,7 @@ Review the current workspace changes and identify every documentation update req
 
 Mandatory instruction sources:
 - `.github/copilot-instructions.md`
+- `docs/config.md`
 - `docs/api.md`
 - `docs/requirements.md`
 - `docs/route-contract.md`
@@ -39,9 +40,11 @@ Focus areas:
 - Pagination, search, filtering, and payload rendering behavior
 - New or changed buttons, menus, search controls, navigation paths, loading states, empty states, mobile states, and error states
 - Setup, configuration, deployment, or operational guidance
+- Configuration keys, default values, expected value types, and runtime config behavior
 
 Check for required updates in places such as:
 - [README.md](../../README.md)
+- [docs/config.md](../../docs/config.md)
 - relevant files under the `docs` tree
 - [docs/api.md](../../docs/api.md)
 - API contract sections
@@ -65,6 +68,7 @@ PayloadCatcher-specific constraints:
 - Be evidence-based. Do not suggest speculative documentation work.
 - Preserve provider-agnostic webhook terminology and avoid vendor-specific assumptions.
 - Any API implementation or API modification must update `docs/api.md` in the same change.
+- Any configuration addition, removal, rename, default change, expected-type change, or runtime config behavior change must update `docs/config.md` in the same change.
 - Keep canonical URL references aligned with `https://payloadcat.ch/hook/{clsid}` and `https://payloadcat.ch/inbox/{clsid}` unless the audited change explicitly updates the specification.
 - Keep privacy and security wording aligned with the documented redaction, consent, retry, and auth rules.
 - Prefer small targeted edits over broad rewrites.

@@ -42,6 +42,7 @@ No account signup or authentication required to get started.
 ## Documentation
 
 - **[API Reference](docs/api.md)** - Developer-facing API documentation that must stay aligned with implemented API behavior.
+- **[Configuration Reference](docs/config.md)** - Environment variables, defaults, expected value types, and operational descriptions.
 - **[Installation Guide](docs/install.md)** - Installation requirements, setup procedures, and post-install monitoring commands.
 - **[QA Test Guide](docs/qa-test-guide.md)** - Test suites, case inventory, and regression packs for backend, API, UI, and operational QA.
 - **[Requirements](docs/requirements.md)** — Functional and non-functional requirements, security model, and privacy rules.

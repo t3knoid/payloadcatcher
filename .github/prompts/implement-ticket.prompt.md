@@ -19,6 +19,7 @@ This prompt includes documentation-audit and documentation-update requirements a
 Read and apply all of the following before any analysis, planning, code edits, or test changes:
 
 - `.github/copilot-instructions.md`
+- `docs/config.md`
 - `docs/api.md`
 - `docs/requirements.md`
 - `docs/route-contract.md`
@@ -91,6 +92,7 @@ Apply repository rules by file and behavior scope:
 - `docs/route-contract.md`: API shapes, response fields, status codes, schema expectations, signature verification rules, pagination, and byte-safe storage contracts
 - `docs/ui-mock.md`: desktop and mobile layout, request selection behavior, payload display, and callback URL interaction expectations
 - `docs/development.md`: local setup, verification workflow, debugging expectations, and developer-facing operational guidance
+- `docs/config.md`: canonical configuration inventory, defaults, expected value types, and operational config notes
 - `.github/prompts/code-review.prompt.md`: review priorities to preserve during implementation, especially defects, regressions, security, and test completeness
 
 When a changed file falls under multiple instruction sources, apply all relevant rules together.
@@ -112,6 +114,8 @@ Your job is to:
 - implement the necessary documentation changes in the relevant documents
 
 If the ticket affects an API implementation or API behavior, `docs/api.md` must be updated in the same change.
+
+If the ticket affects configuration keys, default values, expected value types, runtime config resolution, deployment config behavior, or `.env` surfaces, `docs/config.md` must be updated in the same change.
 
 If the ticket conflicts with repository instructions, do not implement the conflicting behavior.
 Explain the conflict and propose a compliant alternative.
@@ -150,6 +154,7 @@ Focus areas:
 
 - user-facing behavior
 - developer-facing setup or run behavior
+- configuration keys, defaults, expected value types, or runtime config behavior
 - architectural behavior or trust-boundary changes
 - request and response contracts
 - validation rules and error messages
@@ -161,6 +166,7 @@ Focus areas:
 Check for required updates in places such as:
 
 - `README.md`
+- `docs/config.md`
 - `docs/api.md`
 - files under `docs/`
 - route or schema reference sections
@@ -197,7 +203,7 @@ Documentation constraints:
 8. Add or update focused tests first when practical.
 9. Implement the minimal root-cause fix using the identified existing patterns.
 10. Audit the changed behavior for required documentation, QA, and UI use-case updates using concrete evidence.
-11. Implement the minimal required documentation updates in the relevant documents, including `docs/api.md` for any API implementation or modification.
+11. Implement the minimal required documentation updates in the relevant documents, including `docs/api.md` for any API implementation or modification and `docs/config.md` for any configuration change.
 12. Run the relevant verification steps.
 13. Report what changed and whether the ticket now appears complete.
 14. State whether documentation is aligned or which documents and comments needed updates and why.

@@ -14,6 +14,7 @@ Use the user argument as the source of truth for the requested behavior, accepta
 Treat the following repository documents as the source of truth when shaping the ticket:
 
 - `.github/copilot-instructions.md`
+- `docs/config.md`
 - `docs/api.md`
 - `docs/requirements.md`
 - `docs/route-contract.md`
@@ -42,6 +43,7 @@ The ticket must preserve strict architecture boundaries and provider-agnostic we
 - Keep future user-account and authenticated-callback extensibility intact.
 - Require documentation updates whenever behavior, API shape, configuration, operations, or UI expectations change.
 - Require `docs/api.md` updates whenever API implementation or API behavior changes.
+- Require `docs/config.md` updates whenever configuration keys, default values, expected value types, or operational configuration behavior change.
 - Avoid vendor-specific assumptions, names, or lock-in.
 
 ## Required sections to produce
@@ -110,6 +112,7 @@ Include the relevant requirements from the repository docs, tailored to the requ
 ### 7. Configuration Changes
 - New or updated `.env` keys
 - Default values
+- Expected value types
 - Operational notes and rollout considerations
 
 ### 8. Acceptance Criteria
@@ -132,6 +135,7 @@ At minimum include the applicable items below:
 - QA test additions if UI or workflow behavior changes
 
 If the ticket changes API implementation or API behavior, this section must explicitly include `docs/api.md`.
+If the ticket changes configuration shape or behavior, this section must explicitly include `docs/config.md`.
 
 ### 11. Risks and Mitigations
 - Top technical risks
