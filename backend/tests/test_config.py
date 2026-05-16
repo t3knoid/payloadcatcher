@@ -21,7 +21,7 @@ def test_settings_parse_comma_delimited_list_env_values(monkeypatch) -> None:
         "https://payloadcat.ch",
     ]
     assert settings.cors_allow_origin_networks == ["192.168.0.0/24", "192.168.10.69/32"]
-    assert settings.trusted_proxies == ["127.0.0.1", "::1"]
+    assert settings.trusted_proxies == ["127.0.0.1/32", "::1/128"]
     assert settings.header_allowlist == ["user-agent", "referer", "accept-language"]
 
 
@@ -43,6 +43,26 @@ def test_settings_include_hook_payload_limit_and_content_type_header_by_default(
 def test_settings_reject_invalid_cors_allow_origin_network() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, cors_allow_origin_networks=["not-a-network"])
+
+
+def test_settings_normalize_trusted_proxy_cidrs() -> None:
+    settings = Settings(
+        _env_file=None,
+        trusted_proxies=["127.0.0.1", "10.0.0.0/24", "2001:db8::/64"],
+    )
+
+    assert settings.trusted_proxies == ["127.0.0.1/32", "10.0.0.0/24", "2001:db8::/64"]
+
+
+def test_settings_reject_invalid_trusted_proxy_entry() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, trusted_proxies=["not-a-proxy"])
+
+
+def test_settings_allow_internal_testclient_trusted_proxy_sentinel() -> None:
+    settings = Settings(_env_file=None, trusted_proxies=["testclient"])
+
+    assert settings.trusted_proxies == ["testclient"]
 
 
 @pytest.mark.parametrize("value", [-1, 0, 1, 2, 3])

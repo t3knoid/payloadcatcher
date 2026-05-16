@@ -83,6 +83,17 @@ class Settings(BaseSettings):
             normalized_networks.append(str(ipaddress.ip_network(network, strict=False)))
         return normalized_networks
 
+    @field_validator("trusted_proxies")
+    @classmethod
+    def validate_trusted_proxies(cls, value: list[str]) -> list[str]:
+        normalized_proxies: list[str] = []
+        for proxy in value:
+            if proxy == "testclient":
+                normalized_proxies.append(proxy)
+                continue
+            normalized_proxies.append(str(ipaddress.ip_network(proxy, strict=False)))
+        return normalized_proxies
+
     @field_validator("cookie_samesite")
     @classmethod
     def normalize_cookie_samesite(cls, value: str) -> str:
