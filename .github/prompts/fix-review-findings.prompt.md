@@ -47,7 +47,7 @@ Your job is to:
 - re-run the narrowest checks that prove the finding is resolved
 - update documentation when the fix changes API behavior, setup, operations, or UI expectations
 - update `docs/config.md` when the fix changes configuration keys, defaults, expected types, or runtime/deployment config behavior
-- update the qa-test-guides.md file when the fix changes user-facing behavior or UI states
+- update `docs/qa-test-guide.md` when the fix changes user-facing behavior or UI states
 - update the e2e tests when the fix changes user-facing behavior or UI states
 - provide a concise summary of the change suitable for use as a commit message
 
