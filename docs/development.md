@@ -93,6 +93,7 @@ CALLBACK_TTL_HOURS=24
 CLEANUP_INTERVAL_HOURS=24
 RATE_LIMIT_PER_MINUTE=60
 HOOK_PAYLOAD_MAX_BYTES=1048576
+VIEWER_PAYLOAD_PREVIEW_CHARS=4096
 HEADER_ALLOWLIST=content-type,user-agent,accept-language,referer
 GEOIP_ENABLED=true
 GPS_COLLECTION_ENABLED=true
@@ -181,6 +182,7 @@ Swagger is the required interactive API documentation surface for local developm
 The initial backend scaffold exposes the operational health route at `<http://127.0.0.1:8000/healthz>` in addition to Swagger and OpenAPI endpoints.
 The backend also exposes `GET /` for cookie-backed inbox provisioning and callback URL reuse.
 The hook ingress path `POST /hook/{clsid}` accepts provider-agnostic payloads, acknowledges quickly, and persists in a background task.
+The viewer path `GET /inbox/{clsid}` exposes bearer-style inbox browsing with safe previews, search, pagination, and masked network identifiers.
 
 Reverse proxy note:
 
@@ -279,6 +281,13 @@ Hook ingestion regression:
 ```powershell
 cd backend
 pytest tests/test_webhook_service.py tests/test_hook_api.py
+```
+
+Inbox viewer regression:
+
+```powershell
+cd backend
+pytest tests/test_inbox_viewer_service.py tests/test_inbox_viewer_api.py
 ```
 
 Migration verification:

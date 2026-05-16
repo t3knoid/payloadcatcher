@@ -123,12 +123,12 @@ Purpose: verify viewer data contracts and operator-facing browsing behavior.
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-006-01 | `GET /inbox/{clsid}` returns request summaries and selected event | API | blocked | Response matches the documented viewer contract. |
-| QA-006-02 | Newest event is selected by default when `selected_event_id` is omitted | API/E2E | blocked | Viewer uses deterministic default selection. |
-| QA-006-03 | Search filters by request id, method, source IP, and payload preview | API/E2E | blocked | Results honor the documented query behavior. |
-| QA-006-04 | Pagination enforces default and maximum page sizes | API | blocked | Out-of-range limits return safe client errors. |
-| QA-006-05 | Stable sort order is preserved across pages | API | blocked | Results remain ordered by `received_at DESC, event_id DESC`. |
-| QA-006-06 | Viewer-facing network identifiers are redacted by default | API/E2E | blocked | Public bearer-link view does not expose raw network identifiers. |
+| QA-006-01 | `GET /inbox/{clsid}` returns the documented hook URL, events, next token, and metadata | API | implemented | Response matches the implemented viewer contract. |
+| QA-006-02 | Cursor pagination returns the next stable page of events | API/E2E | implemented | Viewer pages advance deterministically by `received_at DESC, request_id DESC`. |
+| QA-006-03 | Search filters by request id, method, source IP, and payload preview | API/E2E | implemented | Results honor the documented query behavior. |
+| QA-006-04 | Pagination enforces default and maximum page sizes | API | implemented | Out-of-range limits return safe client errors. |
+| QA-006-05 | Invalid cursor input returns a safe client error | API | implemented | Malformed cursor tokens return the documented `400` envelope. |
+| QA-006-06 | Viewer-facing network identifiers are redacted by default | API/E2E | implemented | Public bearer-link view does not expose raw network identifiers. |
 
 ## Suite QA-007 Payload Rendering And Safe Inspection
 
@@ -140,7 +140,7 @@ Purpose: verify safe rendering behavior for structured, text, and binary payload
 | QA-007-02 | Text or malformed structured payload renders as text preview | API/E2E | implemented | Viewer shows readable text when YAML conversion is not appropriate. |
 | QA-007-03 | Binary payload shows metadata-only preview | API/E2E | blocked | Viewer avoids unsafe binary rendering. |
 | QA-007-04 | Unsafe HTML or script content is escaped | E2E | blocked | Viewer never executes payload content. |
-| QA-007-05 | Large payload remains viewable without UI breakage | E2E/Manual | blocked | UI stays responsive and readable for large payloads. |
+| QA-007-05 | Large payload previews are truncated safely for public viewer responses | API/E2E/Manual | ready | Viewer responses stay readable and bounded by the configured preview length. |
 
 ## Suite QA-008 Callback Authentication And Replay Safety
 
@@ -214,6 +214,8 @@ Current automated coverage in the repository maps to these suites:
 | `backend/tests/test_config.py` | QA-002 |
 | `backend/tests/test_inbox_service.py` | QA-004 |
 | `backend/tests/test_bootstrap_api.py` | QA-004 |
+| `backend/tests/test_inbox_viewer_service.py` | QA-006, QA-007 |
+| `backend/tests/test_inbox_viewer_api.py` | QA-006, QA-009, QA-010 |
 | `backend/tests/test_webhook_service.py` | QA-002, QA-005, QA-007 |
 | `backend/tests/test_hook_api.py` | QA-005, QA-007, QA-010 |
 | `backend/tests/test_persistence_models.py` | QA-003 |

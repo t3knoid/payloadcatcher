@@ -93,7 +93,6 @@ Path params:
 Query params:
 
 - `q` (optional, search text against request metadata and payload preview)
-- `selected_event_id` (optional, event id for payload detail panel)
 - `cursor` (optional, opaque pagination cursor)
 - `limit` (optional, page size; default 50, max 100)
 
@@ -101,39 +100,39 @@ Response 200 shape:
 
 ```json
 {
-  "clsid": "550e8400-e29b-41d4-a716-446655440000",
   "hook_url": "https://payloadcat.ch/hook/550e8400-e29b-41d4-a716-446655440000",
-  "expires_at": "2026-05-16T12:00:00Z",
-  "next_cursor": "eyJsYXN0X3JlY2VpdmVkX2F0IjoiMjAyNi0wNS0xNVQxMjowMzowMloifQ",
-  "request_summaries": [
+  "events": [
     {
-      "event_id": "01jv4d6zy8k4h0wn4wdrq7x9md",
+      "request_id": "339adb08249348f089a1fdd27bf0743a",
       "received_at": "2026-05-15T12:03:02Z",
-      "content_type": "application/json",
       "method": "POST",
+      "content_type": "application/json",
       "source_ip_masked": "203.0.113.0/24",
-      "payload_preview": "foo: bar"
+      "payload_yaml": "foo: bar\ncount: 2\n"
     }
   ],
-  "selected_event": {
-    "event_id": "01jv4d6zy8k4h0wn4wdrq7x9md",
-    "received_at": "2026-05-15T12:03:02Z",
-    "content_type": "application/json",
-    "payload_yaml": "foo: bar\ncount: 2\n"
+  "next_token": "eyJyZWNlaXZlZF9hdCI6IjIwMjYtMDUtMTVUMTI6MDM6MDIrMDA6MDAiLCJyZXF1ZXN0X2lkIjoiMzM5YWRiMDgyNDkzNDhmMDg5YTFmZGQyN2JmMDc0M2EifQ",
+  "metadata": {
+    "inbox_issued_at": "2026-05-15T12:00:00Z",
+    "expires_at": "2026-05-16T12:00:00Z",
+    "capture_count": 12
   }
 }
 ```
 
 Notes:
 
-- `request_summaries` powers the narrow left column list.
-- `selected_event` powers the wide right payload panel.
-- If `selected_event_id` is omitted, return the newest event as selected.
-- Sort order is stable by `received_at DESC, event_id DESC`.
+- `events` powers the viewer list and supplies the preview content needed for initial payload rendering.
+- `next_token` is an opaque cursor derived from the last event in the current page.
+- Search matches request ID, method, stored source IP, and stored payload preview text.
+- Sort order is stable by `received_at DESC, request_id DESC`.
+- Viewer-facing network identifiers remain masked by default.
+- Public preview text is truncated to `VIEWER_PAYLOAD_PREVIEW_CHARS`.
 - `limit` values above maximum return 400 with safe error envelope.
 
 Errors:
 
+- 400 invalid clsid, cursor, or limit
 - 404 unknown/expired inbox
 - 429 rate limited
 

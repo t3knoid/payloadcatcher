@@ -157,36 +157,71 @@ Notes:
 - Header capture remains selective and driven by `HEADER_ALLOWLIST`; the default hook allowlist includes `content-type`, `user-agent`, `referer`, and `accept-language`.
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
 
-### Planned Product Endpoints
-
-The routes below are defined by the current PayloadCatcher contract and must stay aligned with [route-contract.md](route-contract.md) and the generated Swagger schema once implemented.
-
-Documentation updates required when this endpoint changes:
-
-- request headers or auth requirements
-- accepted payload formats or size limits
-- ack behavior or async processing semantics
-- deduplication, replay protection, or verification behavior
-- status codes or error envelope behavior
-
 ### GET /inbox/{clsid}
 
-Return the viewer-facing event list and related inbox data for a valid inbox identifier.
+Return the public bearer-style inbox event list and related viewer metadata for a valid inbox identifier.
 
-Expected behavior:
+Current behavior:
 
-- Lists captured events for a valid `clsid`.
-- Supports documented pagination and search behavior.
-- Renders payloads safely for inspection.
-- Redacts viewer-facing network identifiers by default.
+- Validates that `clsid` is a lowercase UUIDv4 before querying the inbox.
+- Rejects unknown or expired inbox identifiers with a safe `404` error envelope.
+- Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
+- Supports `q` search across `request_id`, request method, stored source IP, and stored payload preview text.
+- Supports opaque cursor-based pagination through the `cursor` query param with page size `limit` default `50` and maximum `100`.
+- Sorts results deterministically by `received_at DESC, request_id DESC`.
+- Returns the canonical hook URL so direct viewer visits can still show the active callback URL.
+- Redacts viewer-facing source IPs to subnet form by default:
+  - IPv4 is masked to `/24`
+  - IPv6 is masked to `/64`
+- Returns stored payload preview text without reparsing the YAML, and truncates public previews to `VIEWER_PAYLOAD_PREVIEW_CHARS`.
 
-Documentation updates required when this endpoint changes:
+Request details:
 
-- response fields
-- pagination or search parameters
-- payload rendering behavior
-- privacy redaction behavior
-- status codes or error envelope behavior
+- Method: `GET`
+- Path params:
+  - `clsid`: lowercase UUIDv4 inbox identifier
+- Optional query params:
+  - `q`: free-text filter against request ID, method, source IP, and payload preview text
+  - `cursor`: opaque pagination token from the previous page
+  - `limit`: page size, default `50`, maximum `100`
+
+Response shape:
+
+```json
+{
+  "hook_url": "https://payloadcat.ch/hook/550e8400-e29b-41d4-a716-446655440000",
+  "events": [
+    {
+      "request_id": "339adb08249348f089a1fdd27bf0743a",
+      "received_at": "2026-05-15T12:03:02Z",
+      "method": "POST",
+      "content_type": "application/json",
+      "payload_yaml": "foo: bar\ncount: 2\n",
+      "source_ip_masked": "203.0.113.0/24"
+    }
+  ],
+  "next_token": "eyJyZWNlaXZlZF9hdCI6IjIwMjYtMDUtMTVUMTI6MDM6MDIrMDA6MDAiLCJyZXF1ZXN0X2lkIjoiMzM5YWRiMDgyNDkzNDhmMDg5YTFmZGQyN2JmMDc0M2EifQ",
+  "metadata": {
+    "inbox_issued_at": "2026-05-15T12:00:00Z",
+    "expires_at": "2026-05-16T12:00:00Z",
+    "capture_count": 12
+  }
+}
+```
+
+Error responses:
+
+- `400` when `clsid`, `cursor`, or `limit` is invalid
+- `404` when the inbox is missing or expired
+- `429` when the source IP exceeds `RATE_LIMIT_PER_MINUTE`
+- `500` safe error envelope for unexpected failures
+
+Notes:
+
+- This route appears in Swagger and OpenAPI during local development on port `8000`.
+- Public viewer responses remain bearer-link access by possession of URL and do not require a session cookie.
+- `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
+- Viewer previews reflect the stored YAML or text preview created during hook ingestion; the viewer endpoint does not execute or dynamically parse payload content.
 
 ## Error Envelope
 
