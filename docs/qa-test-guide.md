@@ -108,13 +108,14 @@ Purpose: verify provider-agnostic capture behavior and fast acknowledgement sema
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-005-01 | Valid JSON webhook is accepted with fast `200` response | API | blocked | Endpoint acknowledges quickly and returns the accepted shape. |
-| QA-005-02 | Plain text payload is accepted | API | blocked | Non-JSON text payload is stored without schema assumptions. |
-| QA-005-03 | Form-encoded payload is accepted | API | blocked | Request is accepted and stored in byte-safe form. |
-| QA-005-04 | Binary payload is accepted and stored safely | API | blocked | Binary payload does not break parsing or storage. |
-| QA-005-05 | Unknown or expired `clsid` returns a safe `404` error envelope | API | blocked | Response contains safe error details and request correlation. |
-| QA-005-06 | Oversized payload returns `413` with safe error response | API | blocked | Payload size limits are enforced with documented failure semantics. |
+| QA-005-01 | Valid JSON webhook is accepted with fast `200` response | API | implemented | Endpoint acknowledges quickly and returns the accepted shape. |
+| QA-005-02 | Plain text payload is accepted | API | ready | Non-JSON text payload is stored without schema assumptions. |
+| QA-005-03 | Form-encoded payload is accepted | API | implemented | Request is accepted and stored in byte-safe form. |
+| QA-005-04 | Binary payload is accepted and stored safely | API | implemented | Binary payload does not break parsing or storage. |
+| QA-005-05 | Unknown or expired `clsid` returns a safe `404` error envelope | API | implemented | Response contains safe error details and request correlation. |
+| QA-005-06 | Oversized payload returns `413` with safe error response | API | implemented | Payload size limits are enforced with documented failure semantics. |
 | QA-005-07 | Burst traffic keeps the ack path responsive | API/Load | blocked | Ack latency remains within the configured target under concurrent posts. |
+| QA-005-08 | Invalid `Content-Type` header returns `415` with safe error response | API | implemented | Malformed media type values are rejected with the documented safe envelope. |
 
 ## Suite QA-006 Inbox Viewer, Search, And Pagination
 
@@ -213,6 +214,8 @@ Current automated coverage in the repository maps to these suites:
 | `backend/tests/test_config.py` | QA-002 |
 | `backend/tests/test_inbox_service.py` | QA-004 |
 | `backend/tests/test_bootstrap_api.py` | QA-004 |
+| `backend/tests/test_webhook_service.py` | QA-002, QA-005 |
+| `backend/tests/test_hook_api.py` | QA-005 |
 | `backend/tests/test_persistence_models.py` | QA-003 |
 | `backend/tests/test_migrations.py` | QA-003 |
 
@@ -260,4 +263,5 @@ When a change introduces or modifies behavior:
 
 1. Add Playwright specs for callback provisioning and inbox browsing once the frontend exists.
 2. Add API tests for `GET /`, `POST /hook/{clsid}`, and `GET /inbox/{clsid}` as those routes are implemented.
-3. Add dedicated load and concurrency checks for burst webhook ingestion before production release.
+3. Add API tests for plain-text hook payload acceptance once a dedicated text-ingest fixture is added.
+4. Add dedicated load and concurrency checks for burst webhook ingestion before production release.

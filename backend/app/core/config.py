@@ -26,8 +26,9 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
     callback_ttl_hours: int = Field(default=24, alias="CALLBACK_TTL_HOURS")
+    hook_payload_max_bytes: int = Field(default=1048576, alias="HOOK_PAYLOAD_MAX_BYTES")
     header_allowlist: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["user-agent", "referer", "accept-language"],
+        default_factory=lambda: ["content-type", "user-agent", "referer", "accept-language"],
         alias="HEADER_ALLOWLIST",
     )
     cors_allow_origins: Annotated[list[str], NoDecode] = Field(

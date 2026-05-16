@@ -14,3 +14,15 @@ def test_settings_parse_comma_delimited_list_env_values(monkeypatch) -> None:
     ]
     assert settings.trusted_proxies == ["127.0.0.1", "::1"]
     assert settings.header_allowlist == ["user-agent", "referer", "accept-language"]
+
+
+def test_settings_include_hook_payload_limit_and_content_type_header_by_default() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.hook_payload_max_bytes == 1048576
+    assert settings.header_allowlist == [
+        "content-type",
+        "user-agent",
+        "referer",
+        "accept-language",
+    ]

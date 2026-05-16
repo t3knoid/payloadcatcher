@@ -180,6 +180,7 @@ Swagger is the required interactive API documentation surface for local developm
 
 The initial backend scaffold exposes the operational health route at `<http://127.0.0.1:8000/healthz>` in addition to Swagger and OpenAPI endpoints.
 The backend also exposes `GET /` for cookie-backed inbox provisioning and callback URL reuse.
+The hook ingress path `POST /hook/{clsid}` accepts provider-agnostic payloads, acknowledges quickly, and persists in a background task.
 
 Reverse proxy note:
 
@@ -271,6 +272,13 @@ Bootstrap endpoint regression:
 ```powershell
 cd backend
 pytest tests/test_inbox_service.py tests/test_bootstrap_api.py
+```
+
+Hook ingestion regression:
+
+```powershell
+cd backend
+pytest tests/test_webhook_service.py tests/test_hook_api.py
 ```
 
 Migration verification:
