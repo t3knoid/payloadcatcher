@@ -53,7 +53,7 @@ class InboxProvisioningService:
             request.client.host if request.client else None,
             request.headers.get("x-forwarded-for"),
         )
-        self.enforce_rate_limit(current_source_ip)
+        self.enforce_rate_limit(current_source_ip, scope="bootstrap")
         active_inbox = self._find_active_inbox(
             request.cookies.get(self.settings.session_cookie_name),
             now,
@@ -110,15 +110,20 @@ class InboxProvisioningService:
             )
         return True
 
-    def enforce_rate_limit(self, source_ip: str) -> None:
+    def enforce_rate_limit(self, source_ip: str, scope: str) -> None:
         if self.rate_limiter is None:
             return
 
-        retry_after = self.rate_limiter.check_and_consume(f"bootstrap:{source_ip}")
+        retry_after = self.rate_limiter.check_and_consume(f"{scope}:{source_ip}")
         if retry_after is None:
             return
 
-        self.logger.warning("Bootstrap rate limit exceeded for source_ip=%s retry_after=%s", source_ip, retry_after)
+        self.logger.warning(
+            "%s rate limit exceeded for source_ip=%s retry_after=%s",
+            scope.capitalize(),
+            source_ip,
+            retry_after,
+        )
         raise ApiError(
             429,
             "rate_limited",
@@ -181,7 +186,7 @@ class InboxProvisioningService:
             request.client.host if request.client else None,
             request.headers.get("x-forwarded-for"),
         )
-        self.enforce_rate_limit(source_ip)
+        self.enforce_rate_limit(source_ip, scope="visit-metadata")
         active_inbox = self._find_active_inbox(
             request.cookies.get(self.settings.session_cookie_name),
             self.clock(),

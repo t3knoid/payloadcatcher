@@ -72,11 +72,11 @@ def test_enforce_rate_limit_logs_violation(caplog) -> None:
         rate_limiter=InMemoryRateLimiter(1),
     )
 
-    service.enforce_rate_limit("203.0.113.10")
+    service.enforce_rate_limit("203.0.113.10", scope="bootstrap")
 
     with caplog.at_level(logging.WARNING, logger="payloadcatcher.inbox"):
         with pytest.raises(ApiError) as excinfo:
-            service.enforce_rate_limit("203.0.113.10")
+            service.enforce_rate_limit("203.0.113.10", scope="bootstrap")
 
     assert excinfo.value.status_code == 429
     assert excinfo.value.error_code == "rate_limited"

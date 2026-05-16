@@ -88,7 +88,7 @@ Current behavior:
 - Updates the most recent visit-metadata row for that active inbox.
 - Stores GPS coordinates only when `gps_consent=true` and the backend GPS collection setting remains enabled.
 - Leaves GPS empty when the browser declines or cannot provide geolocation.
-- Enforces the same per-source-IP rate limiting used by bootstrap.
+- Enforces its own per-source-IP rate-limit scope so one consented metadata update does not consume the bootstrap budget for the same visit.
 
 Request details:
 
@@ -118,7 +118,7 @@ Notes:
 
 - This route appears in Swagger and OpenAPI during local development on port `8000`.
 - GPS coordinates remain out of provisioning URLs, browser history, and proxy access logs.
-- The frontend treats this update as best effort and continues normal provisioning when geolocation is unavailable.
+- The frontend treats this update as best effort and continues normal provisioning when geolocation is unavailable or the metadata update request fails.
 
 ## Interactive API Documentation
 

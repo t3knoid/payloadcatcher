@@ -185,6 +185,7 @@ const routeInboxApi = async (
     errorQuery?: string;
     detailDelayMs?: number;
     detailErrorRequestId?: string;
+    visitMetadataFailure?: boolean;
     bootstrapSequence?: Array<typeof bootstrapPayload>;
   },
 ) => {
@@ -209,6 +210,21 @@ const routeInboxApi = async (
   });
 
   await page.route('http://api.payloadcatcher.test/visit-metadata', async (route) => {
+    if (options?.visitMetadataFailure) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'metadata_unavailable',
+            message: 'Visit metadata update unavailable.',
+          },
+          request_id: 'req-metadata-error-001',
+        }),
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 204,
       body: '',
@@ -363,6 +379,63 @@ test.describe('QA-011 inbox UI flows', () => {
     await page.getByTestId('privacy-start-button').click();
 
     await expect(page.getByText('Precise location was unavailable. Continuing with connection and browser metadata only.')).toBeVisible();
+  });
+
+  test('keeps the inbox flow available when the GPS metadata update request fails', async ({ page, context }) => {
+    test.skip(test.info().project.name !== 'chromium', 'Desktop privacy-state assertions run in the desktop Chromium project only.');
+
+    await page.route(/^http:\/\/api\.payloadcatcher\.test\/(?:\?.*)?$/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(bootstrapPayload),
+      });
+    });
+    await page.unroute('http://api.payloadcatcher.test/visit-metadata');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition: (success: PositionCallback) => {
+            success({
+              coords: {
+                latitude: 35.77959,
+                longitude: -78.63818,
+                accuracy: 25,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                speed: null,
+                toJSON: () => ({}),
+              },
+              timestamp: Date.now(),
+              toJSON: () => ({}),
+            } as GeolocationPosition);
+          },
+        },
+      });
+    });
+    await page.route('http://api.payloadcatcher.test/visit-metadata', async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'metadata_unavailable',
+            message: 'Visit metadata update unavailable.',
+          },
+          request_id: 'req-metadata-error-001',
+        }),
+      });
+    });
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Allow one-time precise GPS collection for this device.').check();
+    await page.getByTestId('privacy-start-button').click();
+
+    await expect(page.getByText('Precise location could not be saved. Continuing with connection and browser metadata only.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Copy callback URL' })).toContainText(HOOK_URL);
   });
 
   test('uses the desktop split layout and updates the payload panel when a request is selected', async ({ page }) => {

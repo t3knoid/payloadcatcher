@@ -188,9 +188,11 @@ export const useInboxStore = defineStore('inbox', () => {
       bootstrap.value = payload;
       activeClsid.value = payload.clsid;
       await loadInbox(payload.clsid);
+      return payload;
     } catch (caughtError) {
       error.value = buildSafeMessage(caughtError);
       loading.value = false;
+      return null;
     }
   };
 

@@ -189,4 +189,62 @@ describe('HomeView privacy notice', () => {
 
     expect(wrapper.text()).toContain('Precise location was unavailable. Continuing with connection and browser metadata only.');
   });
+
+  it('keeps provisioning successful when the GPS metadata update request fails', async () => {
+    bootstrapInbox.mockResolvedValueOnce(bootstrapPayload);
+    updateVisitMetadata.mockRejectedValueOnce(new Error('Metadata update failed.'));
+    getInbox.mockResolvedValueOnce(inboxPayload);
+    getInboxEventDetail.mockResolvedValueOnce(detailPayload);
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) => {
+          success({
+            coords: {
+              latitude: 35.77959,
+              longitude: -78.63818,
+              accuracy: 25,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+              toJSON: () => ({}),
+            },
+            timestamp: Date.now(),
+            toJSON: () => ({}),
+          } as GeolocationPosition);
+        },
+      },
+    });
+
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [createPinia()],
+      },
+    });
+
+    await wrapper.get('#gps-consent-toggle').setValue(true);
+    await wrapper.get('[data-testid="privacy-start-button"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Precise location could not be saved. Continuing with connection and browser metadata only.');
+    expect(window.localStorage.getItem('payloadcatcher_privacy_notice_ack')).toBe('accepted');
+  });
+
+  it('does not persist privacy acknowledgment when bootstrap fails', async () => {
+    bootstrapInbox.mockRejectedValueOnce(new Error('Bootstrap failed.'));
+
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [createPinia()],
+      },
+    });
+
+    await wrapper.get('[data-testid="privacy-start-button"]').trigger('click');
+    await flushPromises();
+
+    expect(window.localStorage.getItem('payloadcatcher_privacy_notice_ack')).toBeNull();
+    expect(wrapper.get('[data-testid="privacy-notice"]').exists()).toBe(true);
+  });
 });

@@ -74,19 +74,32 @@ const runBootstrap = async () => {
   privacyActionPending.value = true;
   try {
     const bootstrapMetadata = await buildBootstrapRequest();
-    await store.bootstrapHome(bootstrapMetadata);
+    const bootstrapResult = await store.bootstrapHome(bootstrapMetadata);
+    if (!bootstrapResult) {
+      return false;
+    }
+
     const visitMetadataUpdate = await buildVisitMetadataUpdate();
     if (visitMetadataUpdate) {
-      await store.updateVisitMetadata(visitMetadataUpdate);
+      try {
+        await store.updateVisitMetadata(visitMetadataUpdate);
+      } catch {
+        privacyMessage.value = 'Precise location could not be saved. Continuing with connection and browser metadata only.';
+      }
     }
+    return true;
   } finally {
     privacyActionPending.value = false;
   }
 };
 
 const acknowledgeAndStart = async () => {
+  const bootstrapSucceeded = await runBootstrap();
+  if (!bootstrapSucceeded) {
+    return;
+  }
+
   window.localStorage.setItem(PRIVACY_NOTICE_KEY, 'accepted');
-  await runBootstrap();
   privacyAcknowledged.value = true;
 };
 

@@ -103,7 +103,7 @@ Mobile behavior notes:
    - Show the privacy notice before provisioning the first inbox in the browser.
    - Keep GPS collection disabled unless the operator explicitly opts in.
    - Continue provisioning even when the browser does not return geolocation data.
-   - Keep a readable informational message visible after provisioning if geolocation is denied or unavailable.
+   - Keep a readable informational message visible after provisioning if geolocation is denied, unavailable, or the GPS metadata update cannot be saved.
 3. Request row click behavior:
    - Update selected row style.
    - Load the selected request detail into the payload panel.

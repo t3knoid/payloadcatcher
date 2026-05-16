@@ -58,6 +58,8 @@ Notes:
 - The route uses the active session cookie to locate the current inbox visit.
 - The route updates the most recent `visit_metadata` row for that active inbox.
 - GPS coordinates remain out of provisioning URLs and query strings.
+- The route uses an independent rate-limit scope from `GET /` so one consented metadata update does not exhaust the bootstrap budget for the same visit.
+- Failure to update GPS metadata does not invalidate a successfully provisioned inbox.
 
 Errors:
 

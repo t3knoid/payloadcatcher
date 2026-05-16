@@ -303,6 +303,37 @@ def test_visit_metadata_update_requires_active_session_cookie() -> None:
     assert response.json()["error"]["code"] == "inbox_not_found"
 
 
+def test_visit_metadata_uses_independent_rate_limit_scope() -> None:
+    app, session_factory = _build_test_app(rate_limit_per_minute=1, trusted_proxies=["testclient"])
+    client = TestClient(app, base_url="https://testserver")
+
+    bootstrap_response = client.get(
+        "/",
+        params={"timezone": "America/New_York"},
+    )
+
+    assert bootstrap_response.status_code == 200
+
+    metadata_response = client.post(
+        "/visit-metadata",
+        json={
+            "gps_consent": True,
+            "gps_lat": 35.77959,
+            "gps_lng": -78.63818,
+        },
+    )
+
+    assert metadata_response.status_code == 204
+
+    with session_factory() as session:
+        visit = session.scalar(select(VisitMetadata))
+
+    assert visit is not None
+    assert float(visit.gps_lat) == pytest.approx(35.77959)
+    assert float(visit.gps_lng) == pytest.approx(-78.63818)
+    assert visit.consent is True
+
+
 def test_openapi_includes_bootstrap_route() -> None:
     app, _ = _build_test_app()
     client = TestClient(app)

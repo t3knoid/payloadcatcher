@@ -167,7 +167,7 @@ Purpose: verify metadata collection boundaries and privacy-visible behavior.
 | QA-009-01 | Visit metadata captures only approved fields | API/Manual | implemented | Stored metadata matches the documented allowlist, consent fields, and best-effort locality categories. |
 | QA-009-02 | Sensitive headers are not stored or exposed | API/Manual | implemented | Raw secrets do not appear in persistence, logs, or public responses. |
 | QA-009-03 | GPS data is collected only after explicit consent and stays out of provisioning URLs | E2E/Manual | implemented | No GPS values are stored without opt-in and consented coordinates are submitted in the request body rather than the URL. |
-| QA-009-04 | Privacy notice and GPS fallback messaging are visible before or at collection time | E2E/Manual | implemented | Operator-visible privacy notice appears before the first inbox is provisioned and geolocation fallback messaging remains visible when GPS is unavailable. |
+| QA-009-04 | Privacy notice and GPS fallback messaging are visible before or at collection time | E2E/Manual | implemented | Operator-visible privacy notice appears before the first inbox is provisioned and fallback messaging remains visible when geolocation is unavailable or GPS metadata cannot be saved. |
 | QA-009-05 | Public viewer redacts source IP details by default | API/E2E | implemented | Network identifiers remain masked in bearer-link views. |
 
 ## Suite QA-010 Abuse Controls, Deduplication, And Retention
@@ -179,6 +179,7 @@ Purpose: verify resilience controls, retry-safe ingest, and cleanup behavior.
 | QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | `GET /`, `POST /hook/{clsid}`, and viewer routes return safe `429` responses with retry hints when the source-IP budget is exhausted. |
 | QA-010-02 | Retryable failures include `Retry-After` and retry details | API | implemented | `429` responses include documented retry data. |
 | QA-010-02A | Inbox detail requests use a separate rate-limit budget from inbox listing requests | API | implemented | A normal list-plus-detail viewer flow does not exhaust one shared viewer bucket. |
+| QA-010-02B | Consented visit metadata updates use a separate rate-limit budget from bootstrap provisioning | API | implemented | A successful `GET /` can be followed by one consented `POST /visit-metadata` without double-charging the bootstrap budget for the same visit. |
 | QA-010-03 | Deterministic deduplication marks duplicate deliveries safely | API/Unit | blocked | Duplicate events do not overwrite canonical first-capture data. |
 | QA-010-04 | Daily cleanup removes expired inboxes and stale events idempotently | Integration | blocked | Cleanup can be rerun without corrupting data. |
 | QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | implemented | Concurrent `POST /hook/{clsid}` requests persist distinct events without data loss through the request and background-persistence path. |
