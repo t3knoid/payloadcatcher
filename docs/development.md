@@ -95,6 +95,9 @@ RATE_LIMIT_PER_MINUTE=60
 HOOK_PAYLOAD_MAX_BYTES=1048576
 VIEWER_PAYLOAD_PREVIEW_CHARS=4096
 HEADER_ALLOWLIST=content-type,user-agent,accept-language,referer
+CORS_ALLOW_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
+CORS_ALLOW_ORIGIN_REGEX=^https?://(?:localhost|127\.0\.0\.1):(5173|4173)$
+CORS_ALLOW_ORIGIN_NETWORK=
 GEOIP_ENABLED=true
 GPS_COLLECTION_ENABLED=true
 COOKIE_SECURE=true
@@ -119,7 +122,8 @@ Frontend local env example:
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-The frontend accepts the API base URL from `frontend/.env`, `frontend/.env.local`, or a runtime-injected `window.__PAYLOADCATCHER_CONFIG__` object. If no frontend env file is present, copy `frontend/.env.example` and adjust it for your local backend origin.
+The frontend accepts the API base URL from `frontend/.env`, `frontend/.env.local`, or a runtime-injected `window.__PAYLOADCATCHER_CONFIG__` object. If no frontend env file is present while Vite is serving the app from `127.0.0.1:5173`, `localhost:5173`, `127.0.0.1:4173`, or `localhost:4173`, the frontend falls back to the same host on port `8000` for local API requests. If your backend uses a different origin, copy `frontend/.env.example` and set `VITE_API_BASE_URL` explicitly.
+Leave `CORS_ALLOW_ORIGIN_NETWORK` empty unless you open the frontend from a private-network machine IP. When needed, set it to the smallest practical CIDR, such as `192.168.0.22/32` for one host or `192.168.0.0/24` for a subnet. If you open the frontend from another device on the network, set `VITE_API_BASE_URL` to the machine IP on port `8000` and bind the backend to `0.0.0.0`.
 
 Never commit secrets in local env files.
 

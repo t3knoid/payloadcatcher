@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.errors import ApiError, api_error_handler
 from app.api.routes.bootstrap import router as bootstrap_router
@@ -8,6 +7,7 @@ from app.api.routes.hook import router as hook_router
 from app.api.routes.inbox import router as inbox_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.middleware.cors import NetworkAwareCORSMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 
 
@@ -25,8 +25,10 @@ def create_app() -> FastAPI:
     app.add_exception_handler(ApiError, api_error_handler)
 
     app.add_middleware(
-        CORSMiddleware,
+        NetworkAwareCORSMiddleware,
         allow_origins=settings.cors_allow_origins,
+        allow_origin_regex=settings.cors_allow_origin_regex,
+        allow_origin_networks=settings.cors_allow_origin_networks,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

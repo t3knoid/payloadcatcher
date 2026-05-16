@@ -101,6 +101,8 @@ Review `.env` and update at least:
 
 - `DATABASE_URL` for your PostgreSQL instance
 - `BASE_URL` for your target environment
+- `CORS_ALLOW_ORIGINS` so it includes the frontend dev origin you actually open in the browser, such as both `http://127.0.0.1:5173` and `http://localhost:5173` for local work
+- `CORS_ALLOW_ORIGIN_NETWORK` if you open the frontend from a private-network machine IP such as `http://192.168.x.x:5173`; leave it empty otherwise
 - `COOKIE_SECURE=false` only if you are intentionally testing over plain local HTTP
 
 ### 2.3 Install backend dependencies
@@ -158,6 +160,26 @@ alembic upgrade head
 
 ### 2.5 Install frontend dependencies
 
+Create a local frontend environment file from the example before starting the Vite server.
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+Windows and macOS note:
+
+- PowerShell example: `Copy-Item .env.example .env`
+- Windows Command Prompt example: `copy .env.example .env`
+
+Review `frontend/.env` and confirm `VITE_API_BASE_URL` points at your backend API origin.
+
+- For the default local source install in this guide, use `http://127.0.0.1:8000`.
+- If your backend listens on a different host, port, or reverse-proxy origin, set that explicit origin before running the frontend.
+- If no frontend env file is present and Vite is served from `127.0.0.1:5173`, `localhost:5173`, `127.0.0.1:4173`, or `localhost:4173`, the frontend falls back to the same host on port `8000` for local API requests.
+- If you open the frontend from the machine IP on the same computer, `http://127.0.0.1:8000` remains a valid API target, but backend `CORS_ALLOW_ORIGIN_NETWORK` must include that machine IP or subnet, preferably the smallest practical CIDR such as `192.168.0.22/32`.
+- If you open the frontend from another device on the network, set `VITE_API_BASE_URL` to the machine IP on port `8000` and run the backend on `0.0.0.0` so that device can reach the API.
+
 ```bash
 cd frontend
 npm install
@@ -174,6 +196,12 @@ source .venv/bin/activate
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+If another device on your network needs to reach the backend directly, bind it to all interfaces instead:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
 On Windows PowerShell, activate the virtual environment with `.\.venv\Scripts\Activate.ps1` before running `uvicorn`.
 
 Frontend:
@@ -182,6 +210,8 @@ Frontend:
 cd frontend
 npm run dev
 ```
+
+Before opening the frontend, confirm `frontend/.env` still points at the backend origin you are running. If the frontend cannot reach the API, the home page will stay in the waiting state and surface a request failure banner.
 
 ### 2.7 Verify installation
 
