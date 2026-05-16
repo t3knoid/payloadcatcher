@@ -160,7 +160,7 @@ onMounted(() => {
     />
 
     <p v-if="store.error" class="error-banner">{{ store.error }}</p>
-  <p v-if="privacyMessage" class="privacy-info-banner">{{ privacyMessage }}</p>
+    <p v-if="privacyMessage" class="privacy-info-banner">{{ privacyMessage }}</p>
 
     <section v-if="privacyAcknowledged" class="workspace-grid">
       <EventList

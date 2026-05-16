@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DOMPurify from 'dompurify';
 import { computed, ref, watch } from 'vue';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-yaml';
@@ -80,7 +81,7 @@ const highlightedPayload = computed(() => {
   }
 
   try {
-    return Prism.highlight(props.detail.payload_yaml, Prism.languages.yaml, 'yaml');
+    return DOMPurify.sanitize(Prism.highlight(props.detail.payload_yaml, Prism.languages.yaml, 'yaml'));
   } catch {
     return escapeHtml(props.detail.payload_yaml);
   }
@@ -155,6 +156,7 @@ const highlightedPayload = computed(() => {
           Syntax highlighting is disabled for large payloads to keep rendering responsive.
         </p>
         <pre class="payload-panel__code" :class="{ 'payload-panel__code--plain': !shouldHighlightPayload }">
+          <!-- eslint-disable-next-line vue/no-v-html -->
           <code v-if="shouldHighlightPayload" class="language-yaml" v-html="highlightedPayload"></code>
           <code v-else>{{ displayedPlainPayload }}</code>
         </pre>
