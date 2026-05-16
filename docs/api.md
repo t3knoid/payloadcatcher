@@ -234,6 +234,7 @@ Current behavior:
 - Rejects unknown or expired inbox identifiers with a safe `404` error envelope.
 - Rejects missing event identifiers for the active inbox with a safe `404` error envelope.
 - Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
+- Applies the detail route against an independent viewer-detail rate-limit budget so loading the inbox list does not consume the selected-payload budget.
 - Returns the full stored `payload_yaml` value without preview truncation.
 - Returns sanitized captured request headers, masked source IP data, and payload size metadata for the selected event.
 
@@ -274,6 +275,7 @@ Notes:
 - This route appears in Swagger and OpenAPI during local development on port `8000`.
 - Public viewer responses remain bearer-link access by possession of URL and do not require a session cookie.
 - The returned payload YAML is already stored server-side; the viewer does not evaluate payload content.
+- For large payloads, the frontend reveals the stored YAML incrementally and keeps syntax highlighting disabled until the payload is within the bounded highlight threshold.
 
 ## Error Envelope
 

@@ -291,6 +291,55 @@ def test_get_inbox_event_detail_returns_safe_404_for_missing_event() -> None:
     }
 
 
+def test_get_inbox_event_detail_uses_independent_rate_limit_budget_from_listing() -> None:
+    clsid = "550e8400-e29b-41d4-a716-446655440108"
+    app, session_factory = _build_test_app(rate_limit_per_minute=1)
+    _seed_inbox_with_events(session_factory, clsid)
+    client = TestClient(app)
+
+    listing_response = client.get(
+        f"/inbox/{clsid}",
+        headers={"x-forwarded-for": "203.0.113.10"},
+    )
+    detail_response = client.get(
+        f"/inbox/{clsid}/events/evt-middle",
+        headers={"x-forwarded-for": "203.0.113.10"},
+    )
+
+    assert listing_response.status_code == 200
+    assert detail_response.status_code == 200
+
+
+def test_get_inbox_event_detail_returns_429_with_retry_hints_when_detail_budget_is_exhausted() -> None:
+    clsid = "550e8400-e29b-41d4-a716-446655440109"
+    app, session_factory = _build_test_app(rate_limit_per_minute=1)
+    _seed_inbox_with_events(session_factory, clsid)
+    client = TestClient(app)
+
+    first_response = client.get(
+        f"/inbox/{clsid}/events/evt-middle",
+        headers={"x-forwarded-for": "203.0.113.10"},
+    )
+    second_response = client.get(
+        f"/inbox/{clsid}/events/evt-middle",
+        headers={"x-forwarded-for": "203.0.113.10"},
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert int(second_response.headers["retry-after"]) >= 1
+    assert second_response.json() == {
+        "error": {
+            "code": "rate_limited",
+            "message": "Too many requests",
+            "details": {
+                "retry_after_seconds": int(second_response.headers["retry-after"]),
+            },
+        },
+        "request_id": second_response.headers["x-request-id"],
+    }
+
+
 def test_openapi_includes_inbox_viewer_route() -> None:
     app, _ = _build_test_app()
     client = TestClient(app)

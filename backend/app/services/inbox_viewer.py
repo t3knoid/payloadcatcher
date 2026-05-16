@@ -45,7 +45,7 @@ class InboxViewerService:
     def get_inbox_view(self, clsid: str, query: InboxViewerQuery, request: Request) -> InboxViewerResponse:
         limit = self.validate_limit(query.limit)
         cursor = self.decode_cursor(query.cursor)
-        inbox = self._get_active_inbox(clsid, request)
+        inbox = self._get_active_inbox(clsid, request, rate_limit_scope="viewer")
 
         matched_events = self._load_events(inbox.id, query.q, cursor, limit)
         next_token = None
@@ -69,7 +69,7 @@ class InboxViewerService:
         )
 
     def get_inbox_event_detail(self, clsid: str, request_id: str, request: Request) -> InboxEventDetailResponse:
-        inbox = self._get_active_inbox(clsid, request)
+        inbox = self._get_active_inbox(clsid, request, rate_limit_scope="viewer-detail")
         event = self.session.scalar(
             select(WebhookEvent).where(
                 WebhookEvent.inbox_id == inbox.id,
@@ -112,11 +112,11 @@ class InboxViewerService:
                 return first_forwarded
         return client_host or "unknown"
 
-    def enforce_rate_limit(self, source_ip: str) -> None:
+    def enforce_rate_limit(self, source_ip: str, scope: str) -> None:
         if self.rate_limiter is None:
             return
 
-        retry_after = self.rate_limiter.check_and_consume(f"viewer:{source_ip}")
+        retry_after = self.rate_limiter.check_and_consume(f"{scope}:{source_ip}")
         if retry_after is None:
             return
 
@@ -171,13 +171,13 @@ class InboxViewerService:
     def utc_now(self) -> datetime:
         return datetime.now(UTC)
 
-    def _get_active_inbox(self, clsid: str, request: Request) -> Inbox:
+    def _get_active_inbox(self, clsid: str, request: Request, rate_limit_scope: str) -> Inbox:
         normalized_clsid = self.validate_clsid(clsid)
         source_ip = self.normalize_source_ip(
             request.client.host if request.client else None,
             request.headers.get("x-forwarded-for"),
         )
-        self.enforce_rate_limit(source_ip)
+        self.enforce_rate_limit(source_ip, rate_limit_scope)
 
         inbox = self.session.scalar(
             select(Inbox).where(

@@ -101,9 +101,9 @@ const detailByRequestId = {
     headers: {
       'content-type': 'text/plain',
     },
-    payload_yaml: 'archived payload',
+    payload_yaml: `archived payload\n${'a'.repeat(5000)}\ntail-marker`,
     source_ip_masked: '203.0.113.xxx',
-    payload_size_bytes: 16,
+    payload_size_bytes: 400000,
   },
   'req-101': {
     request_id: 'req-101',
@@ -394,6 +394,22 @@ test.describe('QA-011 inbox UI flows', () => {
     await expect(page.getByTestId('payload-panel')).toContainText('Loading selected payload...');
     await expect(page.getByTestId('payload-panel')).toContainText('Payload temporarily unavailable.');
     await expect(page.getByTestId('payload-panel')).not.toContainText('TypeError');
+  });
+
+  test('reveals large selected payloads incrementally without rendering the full body immediately', async ({ page }) => {
+    test.skip(test.info().project.name !== 'chromium', 'Large payload assertions run in the desktop Chromium project only.');
+
+    await page.goto(`/inbox/${CLSID}`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Next page' }).click();
+    await expect(page.getByTestId('request-req-001')).toBeVisible();
+
+    const payloadPanel = page.getByTestId('payload-panel');
+    await expect(payloadPanel).toContainText('Syntax highlighting is disabled for large payloads to keep rendering responsive.');
+    await expect(payloadPanel).toContainText('Show more');
+    await expect(payloadPanel).not.toContainText('tail-marker');
+
+    await page.getByTestId('payload-show-more-button').click();
+    await expect(payloadPanel).toContainText('tail-marker');
   });
 
   test('stacks panels on mobile and supports paging plus empty search states', async ({ page }) => {

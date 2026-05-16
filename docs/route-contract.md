@@ -173,6 +173,7 @@ Notes:
 - Returns sanitized captured headers for the selected event.
 - Viewer-facing network identifiers remain masked by default.
 - The viewer must treat `payload_yaml` as inert text and never execute payload content.
+- Detail requests use an independent viewer-detail rate-limit budget from the list route so the default list-plus-detail flow does not double-charge one viewer bucket.
 
 Errors:
 

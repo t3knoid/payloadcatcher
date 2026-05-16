@@ -76,4 +76,31 @@ describe('PayloadPanel', () => {
 
     expect(wrapper.emitted('copy')).toEqual([[]]);
   });
+
+  it('renders large payloads incrementally instead of mounting the full payload at once', async () => {
+    const tailMarker = 'tail-marker';
+    const largeDetail = {
+      ...detail,
+      payload_yaml: `header: start\n${'a'.repeat(5000)}\n${tailMarker}`,
+      payload_size_bytes: 400000,
+    };
+
+    const wrapper = mount(PayloadPanel, {
+      props: {
+        detail: largeDetail,
+        loading: false,
+        error: null,
+        copying: false,
+        copied: false,
+      },
+    });
+
+    expect(wrapper.text()).toContain('Syntax highlighting is disabled for large payloads to keep rendering responsive.');
+    expect(wrapper.text()).toContain('Show more');
+    expect(wrapper.text()).not.toContain(tailMarker);
+
+    await wrapper.get('[data-testid="payload-show-more-button"]').trigger('click');
+
+    expect(wrapper.text()).toContain(tailMarker);
+  });
 });

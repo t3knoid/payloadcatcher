@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-yaml';
 
@@ -18,6 +18,7 @@ defineEmits<{
 }>();
 
 const LARGE_PAYLOAD_HIGHLIGHT_LIMIT_BYTES = 256 * 1024;
+const LARGE_PAYLOAD_INITIAL_CHARS = 4096;
 
 const escapeHtml = (value: string) => {
   return value
@@ -35,6 +36,43 @@ const headerEntries = computed(() => {
 const shouldHighlightPayload = computed(() => {
   return Boolean(props.detail) && props.detail.payload_size_bytes <= LARGE_PAYLOAD_HIGHLIGHT_LIMIT_BYTES;
 });
+
+const visiblePayloadChars = ref(LARGE_PAYLOAD_INITIAL_CHARS);
+
+watch(
+  () => props.detail?.request_id,
+  () => {
+    visiblePayloadChars.value = LARGE_PAYLOAD_INITIAL_CHARS;
+  },
+  { immediate: true },
+);
+
+const displayedPlainPayload = computed(() => {
+  if (!props.detail) {
+    return '';
+  }
+
+  return props.detail.payload_yaml.slice(0, visiblePayloadChars.value);
+});
+
+const hasHiddenPayload = computed(() => {
+  if (!props.detail || shouldHighlightPayload.value) {
+    return false;
+  }
+
+  return visiblePayloadChars.value < props.detail.payload_yaml.length;
+});
+
+const showMorePayload = () => {
+  if (!props.detail) {
+    return;
+  }
+
+  visiblePayloadChars.value = Math.min(
+    visiblePayloadChars.value + LARGE_PAYLOAD_INITIAL_CHARS,
+    props.detail.payload_yaml.length,
+  );
+};
 
 const highlightedPayload = computed(() => {
   if (!props.detail || !shouldHighlightPayload.value) {
@@ -118,8 +156,17 @@ const highlightedPayload = computed(() => {
         </p>
         <pre class="payload-panel__code" :class="{ 'payload-panel__code--plain': !shouldHighlightPayload }">
           <code v-if="shouldHighlightPayload" class="language-yaml" v-html="highlightedPayload"></code>
-          <code v-else>{{ detail.payload_yaml }}</code>
+          <code v-else>{{ displayedPlainPayload }}</code>
         </pre>
+        <button
+          v-if="hasHiddenPayload"
+          type="button"
+          class="panel__more panel__more--secondary"
+          data-testid="payload-show-more-button"
+          @click="showMorePayload"
+        >
+          Show more
+        </button>
       </section>
     </div>
   </section>

@@ -129,6 +129,7 @@ Purpose: verify viewer data contracts and operator-facing browsing behavior.
 | QA-006-04 | Pagination enforces default and maximum page sizes | API | implemented | Out-of-range limits return safe client errors. |
 | QA-006-05 | Invalid cursor input returns a safe client error | API | implemented | Malformed cursor tokens return the documented `400` envelope. |
 | QA-006-06 | Viewer-facing network identifiers are redacted by default | API/E2E | implemented | Public bearer-link view does not expose raw network identifiers. |
+| QA-006-07 | `GET /inbox/{clsid}/events/{request_id}` returns full payload detail and sanitized headers | API | implemented | Selected event detail matches the documented contract. |
 
 ## Suite QA-007 Payload Rendering And Safe Inspection
 
@@ -141,6 +142,7 @@ Purpose: verify safe rendering behavior for structured, text, and binary payload
 | QA-007-03 | Binary payload shows metadata-only preview | API/E2E | blocked | Viewer avoids unsafe binary rendering. |
 | QA-007-04 | Unsafe HTML or script content is escaped | E2E | blocked | Viewer never executes payload content. |
 | QA-007-05 | Large payload previews are truncated safely for public viewer responses | API/E2E/Manual | ready | Viewer responses stay readable and bounded by the configured preview length. |
+| QA-007-06 | Large selected payloads reveal incrementally with an explicit control | Unit/E2E | implemented | The payload panel does not mount the entire large payload body at once and reveals more content on demand. |
 
 ## Suite QA-008 Callback Authentication And Replay Safety
 
@@ -176,6 +178,7 @@ Purpose: verify resilience controls, retry-safe ingest, and cleanup behavior.
 | --- | --- | --- | --- | --- |
 | QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | Excess traffic returns a safe `429` with retry hints. |
 | QA-010-02 | Retryable failures include `Retry-After` and retry details | API | implemented | `429` responses include documented retry data. |
+| QA-010-02A | Inbox detail requests use a separate rate-limit budget from inbox listing requests | API | implemented | A normal list-plus-detail viewer flow does not exhaust one shared viewer bucket. |
 | QA-010-03 | Deterministic deduplication marks duplicate deliveries safely | API/Unit | blocked | Duplicate events do not overwrite canonical first-capture data. |
 | QA-010-04 | Daily cleanup removes expired inboxes and stale events idempotently | Integration | blocked | Cleanup can be rerun without corrupting data. |
 | QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | blocked | Persistence remains consistent under simultaneous posts. |
@@ -193,6 +196,7 @@ Purpose: verify the operator-facing UI matches the documented layout and interac
 | QA-011-05 | Clicking a request updates the selected payload panel | E2E | implemented | Selected payload changes without unsafe rendering. |
 | QA-011-06 | Empty, loading, and error states remain user-readable | E2E/Manual | implemented | UI surfaces safe operator-friendly states when data is absent or failing. |
 | QA-011-07 | Search and pagination state survive reloads on direct inbox routes | E2E | implemented | Query-backed `q` and cursor state restore the filtered inbox page after reload. |
+| QA-011-08 | Large selected payloads show a visible incremental reveal control | E2E | implemented | The payload panel exposes a "Show more" control and reveals the remaining payload only on demand. |
 
 ## 6. Minimum Regression Packs
 

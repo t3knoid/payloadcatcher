@@ -81,6 +81,7 @@ Mobile behavior notes:
 3. Keep copy action visible without opening additional menus.
 4. Show a readable loading state while the selected payload detail is fetched.
 5. Show a safe inline error message in the payload panel when the selected payload detail is unavailable.
+6. For very large payloads, show the selected payload incrementally with a visible "Show more" control.
 
 ## 5. Interaction Notes
 
@@ -100,3 +101,4 @@ Mobile behavior notes:
 5. Payload panel behavior:
    - Show captured request metadata including request ID, received time, method, content type, and sanitized headers.
    - Copy the full selected payload to the clipboard without opening a secondary menu.
+   - Reveal very large payloads incrementally so the panel stays responsive on desktop and mobile.
