@@ -49,6 +49,7 @@ Your job is to:
 - update `docs/config.md` when the fix changes configuration keys, defaults, expected types, or runtime/deployment config behavior
 - update the qa-test-guides.md file when the fix changes user-facing behavior or UI states
 - update the e2e tests when the fix changes user-facing behavior or UI states
+- provide a concise summary of the change suitable for use as a commit message
 
 If a reported finding is incorrect, outdated, or no longer reproducible, say so with concrete evidence rather than silently skipping it.
 
@@ -112,6 +113,7 @@ Unless the reviewed change explicitly alters the specification and the docs are 
 11. Audit the changed behavior for required documentation updates, including `docs/api.md` for API-related fixes.
 12. Run the relevant verification steps.
 13. Report which findings are fixed, which remain open, and why.
+14. End with a concise change summary that can be reused as a commit message.
 
 If the user supplied multiple findings, address them in severity order unless there is a clear dependency that requires a different order.
 
@@ -174,3 +176,6 @@ List the checks run and their outcomes. Do not claim a finding is fixed without 
 
 ## Notes
 Include follow-ups, assumptions, invalidated findings, or residual risks.
+
+## Commit Message Summary
+Provide 1 concise sentence in imperative or past-tense style that summarizes the change set and can be used directly or adapted for a git commit message.
