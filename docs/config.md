@@ -24,7 +24,7 @@ Use the values in this reference together with [install.md](install.md) and [dev
 | `CORS_ALLOW_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | `comma-delimited origin list` | Explicit browser origins allowed to call the backend API through CORS. |
 | `CORS_ALLOW_ORIGIN_REGEX` | `^https?://(?:localhost\|127\.0\.0\.1):(5173\|4173)$` | `regex string` | Regex-based CORS origin rule used for loopback development hosts. |
 | `CORS_ALLOW_ORIGIN_NETWORK` | `(empty)` | `CIDR string or comma-delimited CIDR list` | Network-scoped CORS allowlist for frontend origins opened from private-network machine IPs. Keep it empty unless needed, then prefer the smallest practical CIDR such as `192.168.0.22/32` or `192.168.0.0/24`. |
-| `TRUSTED_PROXIES` | `127.0.0.1,::1` | `comma-delimited IP/CIDR list` | Proxy addresses trusted for forwarded client metadata handling. |
+| `TRUSTED_PROXIES` | `127.0.0.1,::1` | `comma-delimited IP/CIDR list` | Proxy addresses trusted for forwarded client metadata handling. Values are validated at settings load time; exact IP entries normalize internally to single-host CIDRs. |
 | `SESSION_COOKIE_NAME` | `payloadcatcher_session` | `string` | Cookie name used for inbox session continuity. |
 | `COOKIE_SECURE` | `true` | `boolean` | Controls whether the session cookie requires HTTPS transport. |
 | `COOKIE_SAMESITE` | `lax` | `enum string` (`lax`, `strict`, `none`) | SameSite policy applied to the session cookie. |

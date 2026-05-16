@@ -178,4 +178,4 @@ List the checks run and their outcomes. Do not claim a finding is fixed without 
 Include follow-ups, assumptions, invalidated findings, or residual risks.
 
 ## Commit Message Summary
-Provide 1 concise sentence in imperative or past-tense style that summarizes the change set and can be used directly or adapted for a git commit message.
+Provide 1 concise sentence in imperative or past-tense style inside a fenced code block that summarizes the change set and can be used directly or adapted for a git commit message.

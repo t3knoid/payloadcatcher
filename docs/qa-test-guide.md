@@ -73,7 +73,7 @@ Purpose: verify environment configuration defaults and cross-environment parsing
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
 | QA-002-01 | Comma-delimited `CORS_ALLOW_ORIGINS` parses correctly | Unit | implemented | Settings convert the env string into the expected list. |
-| QA-002-02 | Comma-delimited `TRUSTED_PROXIES` parses correctly | Unit | implemented | Settings convert the env string into the expected list. |
+| QA-002-02 | `TRUSTED_PROXIES` normalizes valid IP or CIDR entries and rejects malformed values | Unit | implemented | Settings convert exact IPs to single-host CIDRs, preserve CIDR entries, and fail fast on malformed proxy configuration. |
 | QA-002-03 | JSON-array list env values parse correctly | Unit | ready | Settings accept equivalent JSON list input. |
 | QA-002-04 | Default local API docs bind to port `8000` while site-facing port remains `8080` | Manual | ready | Local docs and serving defaults remain distinct and documented. |
 
