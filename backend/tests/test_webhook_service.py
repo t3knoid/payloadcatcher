@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import yaml
 
 from app.api.errors import ApiError
 from app.core.config import Settings
@@ -41,3 +42,11 @@ def test_validate_payload_size_rejects_oversized_payload() -> None:
 
     assert excinfo.value.status_code == 413
     assert excinfo.value.error_code == "payload_too_large"
+
+
+def test_render_payload_yaml_falls_back_for_malformed_json() -> None:
+    service = _build_service()
+
+    rendered = service.render_payload_yaml(b'{"foo": }', "application/json")
+
+    assert yaml.safe_load(rendered) == {"text": '{"foo": }'}

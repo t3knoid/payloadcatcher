@@ -137,7 +137,7 @@ Purpose: verify safe rendering behavior for structured, text, and binary payload
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
 | QA-007-01 | Structured payload renders as YAML | API/E2E | blocked | Viewer shows deterministic YAML output. |
-| QA-007-02 | Text payload renders as text preview | API/E2E | blocked | Viewer shows readable text when YAML conversion is not appropriate. |
+| QA-007-02 | Text or malformed structured payload renders as text preview | API/E2E | implemented | Viewer shows readable text when YAML conversion is not appropriate. |
 | QA-007-03 | Binary payload shows metadata-only preview | API/E2E | blocked | Viewer avoids unsafe binary rendering. |
 | QA-007-04 | Unsafe HTML or script content is escaped | E2E | blocked | Viewer never executes payload content. |
 | QA-007-05 | Large payload remains viewable without UI breakage | E2E/Manual | blocked | UI stays responsive and readable for large payloads. |
@@ -174,8 +174,8 @@ Purpose: verify resilience controls, retry-safe ingest, and cleanup behavior.
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-010-01 | Public endpoints enforce documented rate limits | API/Load | blocked | Excess traffic returns a safe `429` with retry hints. |
-| QA-010-02 | Retryable failures include `Retry-After` and retry details | API | blocked | `429` and `503` responses include documented retry data. |
+| QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | Excess traffic returns a safe `429` with retry hints. |
+| QA-010-02 | Retryable failures include `Retry-After` and retry details | API | implemented | `429` responses include documented retry data. |
 | QA-010-03 | Deterministic deduplication marks duplicate deliveries safely | API/Unit | blocked | Duplicate events do not overwrite canonical first-capture data. |
 | QA-010-04 | Daily cleanup removes expired inboxes and stale events idempotently | Integration | blocked | Cleanup can be rerun without corrupting data. |
 | QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | blocked | Persistence remains consistent under simultaneous posts. |
@@ -214,8 +214,8 @@ Current automated coverage in the repository maps to these suites:
 | `backend/tests/test_config.py` | QA-002 |
 | `backend/tests/test_inbox_service.py` | QA-004 |
 | `backend/tests/test_bootstrap_api.py` | QA-004 |
-| `backend/tests/test_webhook_service.py` | QA-002, QA-005 |
-| `backend/tests/test_hook_api.py` | QA-005 |
+| `backend/tests/test_webhook_service.py` | QA-002, QA-005, QA-007 |
+| `backend/tests/test_hook_api.py` | QA-005, QA-007, QA-010 |
 | `backend/tests/test_persistence_models.py` | QA-003 |
 | `backend/tests/test_migrations.py` | QA-003 |
 

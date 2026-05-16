@@ -21,6 +21,7 @@ router = APIRouter(tags=["hook"])
         404: {"model": SafeErrorResponse, "description": "Inbox does not exist or has expired."},
         413: {"model": SafeErrorResponse, "description": "Payload exceeds configured size limit."},
         415: {"model": SafeErrorResponse, "description": "Content-Type header is invalid."},
+        429: {"model": SafeErrorResponse, "description": "Too many requests for the current source IP."},
         500: {"model": SafeErrorResponse, "description": "Safe internal error envelope."},
     },
 )

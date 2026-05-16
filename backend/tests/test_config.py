@@ -20,6 +20,7 @@ def test_settings_include_hook_payload_limit_and_content_type_header_by_default(
     settings = Settings(_env_file=None)
 
     assert settings.hook_payload_max_bytes == 1048576
+    assert settings.rate_limit_per_minute == 60
     assert settings.header_allowlist == [
         "content-type",
         "user-agent",

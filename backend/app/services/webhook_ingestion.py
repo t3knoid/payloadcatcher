@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 import ipaddress
 import json
+from json import JSONDecodeError
 import logging
 import re
 import uuid
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.errors import ApiError
 from app.core.config import Settings, get_settings
-from app.core.logging import request_id_context
+from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
 from app.persistence.models import Inbox, WebhookEvent
 from app.persistence.session import get_db_session
 
@@ -49,11 +50,13 @@ class WebhookIngestionService:
         session: Session | None,
         session_factory: sessionmaker[Session] | None,
         settings: Settings,
+        rate_limiter: InMemoryRateLimiter | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.session = session
         self.session_factory = session_factory
         self.settings = settings
+        self.rate_limiter = rate_limiter
         self.clock = clock or utc_now
         self.logger = logging.getLogger("payloadcatcher.hook")
 
@@ -62,6 +65,11 @@ class WebhookIngestionService:
             raise RuntimeError("Session is required to prepare webhook ingestion")
 
         normalized_clsid = self.validate_clsid(clsid)
+        source_ip = self.normalize_source_ip(
+            request.client.host if request.client else None,
+            request.headers.get("x-forwarded-for"),
+        )
+        self.enforce_rate_limit(source_ip)
         content_type = self.normalize_content_type(request.headers.get("content-type"))
         self.validate_payload_size(payload_raw)
 
@@ -77,12 +85,9 @@ class WebhookIngestionService:
         return PreparedWebhookIngestion(
             inbox_id=inbox.id,
             clsid=normalized_clsid,
-            request_id=request_id_context.get() or uuid.uuid4().hex,
+            request_id=uuid.uuid4().hex,
             received_at=self.clock(),
-            source_ip=self.normalize_source_ip(
-                request.client.host if request.client else None,
-                request.headers.get("x-forwarded-for"),
-            ),
+            source_ip=source_ip,
             method=request.method,
             content_type=content_type,
             payload_raw=payload_raw,
@@ -150,6 +155,22 @@ class WebhookIngestionService:
                 details={"max_bytes": self.settings.hook_payload_max_bytes},
             )
 
+    def enforce_rate_limit(self, source_ip: str) -> None:
+        if self.rate_limiter is None:
+            return
+
+        retry_after = self.rate_limiter.check_and_consume(source_ip)
+        if retry_after is None:
+            return
+
+        raise ApiError(
+            429,
+            "rate_limited",
+            "Too many requests",
+            details={"retry_after_seconds": retry_after},
+            headers={"Retry-After": str(retry_after)},
+        )
+
     def normalize_content_type(self, content_type: str | None) -> str | None:
         if content_type is None:
             return None
@@ -170,30 +191,48 @@ class WebhookIngestionService:
 
     def render_payload_yaml(self, payload_raw: bytes, content_type: str | None) -> str:
         if self._is_json_media_type(content_type):
-            parsed_json = json.loads(payload_raw.decode("utf-8"))
+            try:
+                parsed_json = json.loads(payload_raw.decode("utf-8"))
+            except (UnicodeDecodeError, JSONDecodeError):
+                self.logger.warning(
+                    "Malformed JSON payload fell back to text or binary preview"
+                )
+                return self._render_text_or_binary_preview(payload_raw, content_type)
             return yaml.safe_dump(parsed_json, sort_keys=False, allow_unicode=True)
 
         if content_type == "application/x-www-form-urlencoded":
-            parsed_form = self.normalized_form_payload(payload_raw.decode("utf-8"))
+            try:
+                parsed_form = self.normalized_form_payload(payload_raw.decode("utf-8"))
+            except UnicodeDecodeError:
+                self.logger.warning(
+                    "Malformed form payload fell back to binary preview"
+                )
+                return self._render_binary_preview(payload_raw, content_type)
             return yaml.safe_dump(parsed_form, sort_keys=False, allow_unicode=True)
 
         if self._is_text_like_content_type(content_type):
-            return yaml.safe_dump({"text": payload_raw.decode("utf-8")}, sort_keys=False, allow_unicode=True)
+            return self._render_text_or_binary_preview(payload_raw, content_type)
 
+        return self._render_text_or_binary_preview(payload_raw, content_type)
+
+    def _render_text_or_binary_preview(self, payload_raw: bytes, content_type: str | None) -> str:
         try:
             decoded = payload_raw.decode("utf-8")
         except UnicodeDecodeError:
-            return yaml.safe_dump(
-                {
-                    "binary_payload": True,
-                    "content_type": content_type or "application/octet-stream",
-                    "payload_size_bytes": len(payload_raw),
-                },
-                sort_keys=False,
-                allow_unicode=True,
-            )
+            return self._render_binary_preview(payload_raw, content_type)
 
         return yaml.safe_dump({"text": decoded}, sort_keys=False, allow_unicode=True)
+
+    def _render_binary_preview(self, payload_raw: bytes, content_type: str | None) -> str:
+        return yaml.safe_dump(
+            {
+                "binary_payload": True,
+                "content_type": content_type or "application/octet-stream",
+                "payload_size_bytes": len(payload_raw),
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        )
 
     def normalize_source_ip(self, client_host: str | None, forwarded_for: str | None) -> str:
         if client_host and client_host in self.settings.trusted_proxies and forwarded_for:
@@ -231,6 +270,7 @@ class WebhookIngestionService:
 def get_webhook_ingestion_service(
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
+    rate_limiter: InMemoryRateLimiter = Depends(get_hook_rate_limiter),
 ) -> WebhookIngestionService:
     return WebhookIngestionService(
         session=session,
@@ -241,4 +281,5 @@ def get_webhook_ingestion_service(
             expire_on_commit=False,
         ),
         settings=settings,
+        rate_limiter=rate_limiter,
     )
