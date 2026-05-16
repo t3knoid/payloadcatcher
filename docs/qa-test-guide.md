@@ -181,7 +181,7 @@ Purpose: verify resilience controls, retry-safe ingest, and cleanup behavior.
 | QA-010-02A | Inbox detail requests use a separate rate-limit budget from inbox listing requests | API | implemented | A normal list-plus-detail viewer flow does not exhaust one shared viewer bucket. |
 | QA-010-03 | Deterministic deduplication marks duplicate deliveries safely | API/Unit | blocked | Duplicate events do not overwrite canonical first-capture data. |
 | QA-010-04 | Daily cleanup removes expired inboxes and stale events idempotently | Integration | blocked | Cleanup can be rerun without corrupting data. |
-| QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | ready | Limiter concurrency is covered; full persistence concurrency validation still needs a dedicated API-level harness. |
+| QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | implemented | Concurrent `POST /hook/{clsid}` requests persist distinct events without data loss through the request and background-persistence path. |
 
 ## Suite QA-011 Frontend Inbox Experience And Responsive Layout
 

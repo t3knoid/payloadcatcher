@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from app.api.errors import ApiError
 from app.api.schemas.inbox import ProvisionInboxQuery
 from app.core.config import Settings, get_settings
-from app.infrastructure.metrics import InMemoryMetrics, get_metrics
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_request_rate_limiter
 from app.persistence.models import Inbox, VisitMetadata
 from app.persistence.session import get_db_session
@@ -39,13 +38,11 @@ class InboxProvisioningService:
         session: Session,
         settings: Settings,
         rate_limiter: InMemoryRateLimiter | None = None,
-        metrics: InMemoryMetrics | None = None,
         clock=None,
     ) -> None:
         self.session = session
         self.settings = settings
         self.rate_limiter = rate_limiter
-        self.metrics = metrics
         self.clock = clock or utc_now
         self.logger = logging.getLogger("payloadcatcher.inbox")
 
@@ -121,8 +118,6 @@ class InboxProvisioningService:
             return
 
         self.logger.warning("Bootstrap rate limit exceeded for source_ip=%s retry_after=%s", source_ip, retry_after)
-        if self.metrics is not None:
-            self.metrics.increment("bootstrap.rate_limit_rejected")
         raise ApiError(
             429,
             "rate_limited",
@@ -232,11 +227,9 @@ def get_inbox_provisioning_service(
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     rate_limiter: InMemoryRateLimiter = Depends(get_request_rate_limiter),
-    metrics: InMemoryMetrics = Depends(get_metrics),
 ) -> InboxProvisioningService:
     return InboxProvisioningService(
         session=session,
         settings=settings,
         rate_limiter=rate_limiter,
-        metrics=metrics,
     )

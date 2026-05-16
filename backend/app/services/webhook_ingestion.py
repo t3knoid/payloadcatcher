@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.errors import ApiError
 from app.core.config import Settings, get_settings
-from app.infrastructure.metrics import InMemoryMetrics, get_metrics
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
 from app.persistence.models import Inbox, WebhookEvent
 from app.persistence.session import get_db_session
@@ -52,14 +51,12 @@ class WebhookIngestionService:
         session_factory: sessionmaker[Session] | None,
         settings: Settings,
         rate_limiter: InMemoryRateLimiter | None = None,
-        metrics: InMemoryMetrics | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.session = session
         self.session_factory = session_factory
         self.settings = settings
         self.rate_limiter = rate_limiter
-        self.metrics = metrics
         self.clock = clock or utc_now
         self.logger = logging.getLogger("payloadcatcher.hook")
 
@@ -156,8 +153,6 @@ class WebhookIngestionService:
                 len(payload_raw),
                 self.settings.hook_payload_max_bytes,
             )
-            if self.metrics is not None:
-                self.metrics.increment("hook.payload_too_large_rejected")
             raise ApiError(
                 413,
                 "payload_too_large",
@@ -174,8 +169,6 @@ class WebhookIngestionService:
             return
 
         self.logger.warning("Webhook rate limit exceeded for source_ip=%s retry_after=%s", source_ip, retry_after)
-        if self.metrics is not None:
-            self.metrics.increment("hook.rate_limit_rejected")
 
         raise ApiError(
             429,
@@ -194,8 +187,6 @@ class WebhookIngestionService:
             return None
         if not CONTENT_TYPE_PATTERN.match(media_type):
             self.logger.warning("Webhook content-type rejected raw_content_type=%s", content_type)
-            if self.metrics is not None:
-                self.metrics.increment("hook.invalid_content_type_rejected")
             raise ApiError(415, "unsupported_media_type", "Content-Type header is invalid")
         return media_type
 
@@ -288,7 +279,6 @@ def get_webhook_ingestion_service(
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     rate_limiter: InMemoryRateLimiter = Depends(get_hook_rate_limiter),
-    metrics: InMemoryMetrics = Depends(get_metrics),
 ) -> WebhookIngestionService:
     return WebhookIngestionService(
         session=session,
@@ -300,5 +290,4 @@ def get_webhook_ingestion_service(
         ),
         settings=settings,
         rate_limiter=rate_limiter,
-        metrics=metrics,
     )

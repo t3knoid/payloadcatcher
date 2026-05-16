@@ -48,7 +48,7 @@ Current behavior:
 - Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
 - Sets a session cookie with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
 - Treats source IP as a risk signal during active-session reuse and logs source-IP changes while preserving cookie-first continuity.
-- Logs rate-limit violations and increments in-process rejection counters for bootstrap and webhook abuse-protection decisions.
+- Logs rate-limit violations for bootstrap and webhook abuse-protection decisions.
 
 Request details:
 
@@ -159,7 +159,7 @@ Notes:
 - The background task uses the same configured database binding as the request path and logs accepted ingest events with request correlation.
 - Header capture remains selective and driven by `HEADER_ALLOWLIST`; the default hook allowlist includes `content-type`, `user-agent`, `referer`, and `accept-language`.
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
-- Abuse rejections for rate limits, malformed `Content-Type`, and oversized payloads emit warning logs and increment in-process rejection counters.
+- Abuse rejections for rate limits, malformed `Content-Type`, and oversized payloads emit warning logs.
 
 ### GET /inbox/{clsid}
 

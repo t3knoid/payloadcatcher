@@ -4,7 +4,6 @@ import pytest
 
 from app.api.errors import ApiError
 from app.core.config import Settings
-from app.infrastructure.metrics import InMemoryMetrics
 from app.infrastructure.rate_limit import InMemoryRateLimiter
 from app.services.inbox_provisioning import InboxProvisioningService
 
@@ -64,14 +63,12 @@ def test_reuse_policy_logs_source_ip_change_as_risk_signal(caplog) -> None:
     assert "Source IP changed for active inbox" in caplog.text
 
 
-def test_enforce_rate_limit_logs_and_records_metric(caplog) -> None:
+def test_enforce_rate_limit_logs_violation(caplog) -> None:
     settings = Settings(_env_file=None)
-    metrics = InMemoryMetrics()
     service = InboxProvisioningService(
         session=None,
         settings=settings,
         rate_limiter=InMemoryRateLimiter(1),
-        metrics=metrics,
     )
 
     service.enforce_rate_limit("203.0.113.10")
@@ -82,5 +79,4 @@ def test_enforce_rate_limit_logs_and_records_metric(caplog) -> None:
 
     assert excinfo.value.status_code == 429
     assert excinfo.value.error_code == "rate_limited"
-    assert metrics.get("bootstrap.rate_limit_rejected") == 1
     assert "Bootstrap rate limit exceeded" in caplog.text

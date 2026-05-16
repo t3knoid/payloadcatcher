@@ -10,7 +10,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.infrastructure.metrics import InMemoryMetrics, get_metrics
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_request_rate_limiter
 from app.main import create_app
 from app.core.config import Settings, get_settings
@@ -28,7 +27,7 @@ def _build_test_app(
     *,
     trusted_proxies: list[str] | None = None,
     rate_limit_per_minute: int = 60,
-) -> tuple[FastAPI, sessionmaker[Session], InMemoryMetrics]:
+) -> tuple[FastAPI, sessionmaker[Session]]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -44,7 +43,6 @@ def _build_test_app(
         rate_limit_per_minute=rate_limit_per_minute,
     )
     limiter = InMemoryRateLimiter(rate_limit_per_minute)
-    metrics = InMemoryMetrics()
 
     def override_db_session() -> Generator[Session, None, None]:
         session = testing_session_factory()
@@ -56,8 +54,7 @@ def _build_test_app(
     app.dependency_overrides[get_db_session] = override_db_session
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_request_rate_limiter] = lambda: limiter
-    app.dependency_overrides[get_metrics] = lambda: metrics
-    return app, testing_session_factory, metrics
+    return app, testing_session_factory
 
 
 def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) -> None:
@@ -66,7 +63,7 @@ def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) ->
         "app.services.inbox_provisioning.utc_now",
         lambda: first_seen,
     )
-    app, session_factory, _ = _build_test_app()
+    app, session_factory = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get(
@@ -109,7 +106,7 @@ def test_expired_session_rotates_to_new_inbox(monkeypatch) -> None:
         "app.services.inbox_provisioning.utc_now",
         lambda: current_time["value"],
     )
-    app, _, _ = _build_test_app()
+    app, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get("/")
@@ -133,7 +130,7 @@ def test_exact_expiration_boundary_rotates_inbox(monkeypatch) -> None:
         "app.services.inbox_provisioning.utc_now",
         lambda: current_time["value"],
     )
-    app, _, _ = _build_test_app()
+    app, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get("/")
@@ -156,7 +153,7 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
         "app.services.inbox_provisioning.utc_now",
         lambda: first_seen,
     )
-    app, session_factory, _ = _build_test_app(trusted_proxies=["testclient"])
+    app, session_factory = _build_test_app(trusted_proxies=["testclient"])
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get(
@@ -191,7 +188,7 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
 
 
 def test_openapi_includes_bootstrap_route() -> None:
-    app, _, _ = _build_test_app()
+    app, _ = _build_test_app()
     client = TestClient(app)
 
     response = client.get("/openapi.json")
@@ -201,7 +198,7 @@ def test_openapi_includes_bootstrap_route() -> None:
 
 
 def test_get_root_returns_429_with_retry_hints_when_rate_limited() -> None:
-    app, _, metrics = _build_test_app(rate_limit_per_minute=1)
+    app, _ = _build_test_app(rate_limit_per_minute=1)
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get("/", headers={"x-forwarded-for": "203.0.113.10"})
@@ -220,4 +217,3 @@ def test_get_root_returns_429_with_retry_hints_when_rate_limited() -> None:
         },
         "request_id": second_response.headers["x-request-id"],
     }
-    assert metrics.get("bootstrap.rate_limit_rejected") == 1

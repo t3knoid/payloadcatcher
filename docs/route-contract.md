@@ -75,7 +75,7 @@ Notes:
 - Persist and enrich asynchronously after ack.
 - Invalid/expired `clsid` returns 404 with safe error envelope.
 - Callback authentication behavior is mode-driven per inbox (see Section 4).
-- Abuse rejections for rate limits, malformed `Content-Type`, and oversized payloads emit warning logs and increment in-process rejection counters.
+- Abuse rejections for rate limits, malformed `Content-Type`, and oversized payloads emit warning logs.
 
 Errors:
 

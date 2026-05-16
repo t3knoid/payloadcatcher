@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 import json
+from pathlib import Path
+import tempfile
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -10,7 +13,6 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.infrastructure.metrics import InMemoryMetrics, get_metrics
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
 from app.main import create_app
 from app.core.config import Settings, get_settings
@@ -23,12 +25,13 @@ def _build_test_app(
     *,
     hook_payload_max_bytes: int = 1024,
     rate_limit_per_minute: int = 60,
+    database_url: str = "sqlite+pysqlite:///:memory:",
+    use_static_pool: bool = True,
 ) -> tuple[FastAPI, sessionmaker[Session]]:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    engine_kwargs = {"connect_args": {"check_same_thread": False}}
+    if use_static_pool:
+        engine_kwargs["poolclass"] = StaticPool
+    engine = create_engine(database_url, **engine_kwargs)
     Base.metadata.create_all(engine)
     testing_session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
@@ -40,7 +43,6 @@ def _build_test_app(
         rate_limit_per_minute=rate_limit_per_minute,
     )
     limiter = InMemoryRateLimiter(rate_limit_per_minute)
-    metrics = InMemoryMetrics()
 
     def override_db_session() -> Generator[Session, None, None]:
         session = testing_session_factory()
@@ -52,7 +54,6 @@ def _build_test_app(
     app.dependency_overrides[get_db_session] = override_db_session
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_hook_rate_limiter] = lambda: limiter
-    app.dependency_overrides[get_metrics] = lambda: metrics
     return app, testing_session_factory
 
 
@@ -313,6 +314,45 @@ def test_post_hook_returns_429_with_retry_hints_when_rate_limited() -> None:
 
     with session_factory() as session:
         assert session.query(WebhookEvent).count() == 1
+
+
+def test_post_hook_persists_concurrent_requests_without_data_loss() -> None:
+    clsid = "550e8400-e29b-41d4-a716-446655440008"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        database_path = Path(temp_dir) / "hook-concurrency.db"
+        app, session_factory = _build_test_app(
+            rate_limit_per_minute=100,
+            database_url=f"sqlite+pysqlite:///{database_path.as_posix()}",
+            use_static_pool=False,
+        )
+        _seed_inbox(session_factory, clsid)
+
+        def post_event(index: int) -> tuple[int, str]:
+            with TestClient(app) as client:
+                response = client.post(
+                    f"/hook/{clsid}",
+                    json={"index": index},
+                    headers={"x-forwarded-for": f"203.0.113.{index + 10}"},
+                )
+            return response.status_code, response.json()["request_id"]
+
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            results = list(executor.map(post_event, range(6)))
+
+        assert [status for status, _ in results] == [200, 200, 200, 200, 200, 200]
+        request_ids = [request_id for _, request_id in results]
+        assert len(set(request_ids)) == 6
+
+        with session_factory() as session:
+            persisted_request_ids = {
+                row[0]
+                for row in session.query(WebhookEvent.request_id)
+                .order_by(WebhookEvent.id.asc())
+                .all()
+            }
+
+        assert persisted_request_ids == set(request_ids)
+        session_factory.kw["bind"].dispose()
 
 
 def test_openapi_includes_hook_route() -> None:
