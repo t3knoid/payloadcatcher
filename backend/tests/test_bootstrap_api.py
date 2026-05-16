@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 import re
+import tempfile
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -27,12 +30,13 @@ def _build_test_app(
     *,
     trusted_proxies: list[str] | None = None,
     rate_limit_per_minute: int = 60,
+    database_url: str = "sqlite+pysqlite:///:memory:",
+    use_static_pool: bool = True,
 ) -> tuple[FastAPI, sessionmaker[Session]]:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    engine_kwargs = {"connect_args": {"check_same_thread": False}}
+    if use_static_pool:
+        engine_kwargs["poolclass"] = StaticPool
+    engine = create_engine(database_url, **engine_kwargs)
     Base.metadata.create_all(engine)
     testing_session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
@@ -217,3 +221,52 @@ def test_get_root_returns_429_with_retry_hints_when_rate_limited() -> None:
         },
         "request_id": second_response.headers["x-request-id"],
     }
+
+
+def test_concurrent_revisit_with_same_session_cookie_keeps_active_inbox_stable() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        database_path = Path(temp_dir) / "bootstrap-concurrency.db"
+        app, session_factory = _build_test_app(
+            trusted_proxies=["testclient"],
+            rate_limit_per_minute=100,
+            database_url=f"sqlite+pysqlite:///{database_path.as_posix()}",
+            use_static_pool=False,
+        )
+
+        with TestClient(app, base_url="https://testserver") as client:
+            initial_response = client.get(
+                "/",
+                headers={"x-forwarded-for": "203.0.113.10"},
+            )
+
+        assert initial_response.status_code == 200
+        cookie_header = initial_response.headers["set-cookie"].split(";", maxsplit=1)[0]
+        initial_clsid = initial_response.json()["clsid"]
+
+        def revisit(_: int) -> tuple[int, str]:
+            with TestClient(app, base_url="https://testserver") as client:
+                response = client.get(
+                    "/",
+                    headers={
+                        "cookie": cookie_header,
+                        "x-forwarded-for": "203.0.113.10",
+                    },
+                )
+            return response.status_code, response.json()["clsid"]
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(revisit, range(4)))
+
+        assert [status for status, _ in results] == [200, 200, 200, 200]
+        assert {clsid for _, clsid in results} == {initial_clsid}
+
+        with session_factory() as session:
+            inbox_clsids = {
+                row[0]
+                for row in session.execute(select(VisitMetadata.inbox_id)).all()
+            }
+            inbox_count = session.query(VisitMetadata).count()
+
+        assert len(inbox_clsids) == 1
+        assert inbox_count == 5
+        session_factory.kw["bind"].dispose()

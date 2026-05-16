@@ -4,21 +4,30 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 import json
+from math import ceil
 from pathlib import Path
 import tempfile
+from time import perf_counter, sleep
+import uuid
 
+import anyio
+from fastapi import BackgroundTasks
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from starlette.requests import Request
 
+from app.api.routes.hook import ingest_webhook
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
 from app.main import create_app
 from app.core.config import Settings, get_settings
 from app.persistence.base import Base
 from app.persistence.models import Inbox, WebhookEvent
 from app.persistence.session import get_db_session
+from app.services.webhook_ingestion import PreparedWebhookIngestion
 
 
 def _build_test_app(
@@ -353,6 +362,171 @@ def test_post_hook_persists_concurrent_requests_without_data_loss() -> None:
 
         assert persisted_request_ids == set(request_ids)
         session_factory.kw["bind"].dispose()
+
+
+@pytest.mark.anyio
+async def test_post_hook_burst_ack_latency_stays_within_target() -> None:
+    concurrent_requests = 32
+    persist_delay_seconds = 0.1
+    p95_target_seconds = 0.025
+    max_target_seconds = 0.05
+    clsid = "550e8400-e29b-41d4-a716-446655440010"
+    body = b'{"ok": true}'
+    latencies: list[float] = []
+    background_batches: list[BackgroundTasks] = []
+
+    def build_request() -> Request:
+        delivered = False
+
+        async def receive() -> dict[str, object]:
+            nonlocal delivered
+            if delivered:
+                return {
+                    "type": "http.request",
+                    "body": b"",
+                    "more_body": False,
+                }
+            delivered = True
+            return {
+                "type": "http.request",
+                "body": body,
+                "more_body": False,
+            }
+
+        return Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": f"/hook/{clsid}",
+                "headers": [],
+                "client": ("203.0.113.10", 12345),
+            },
+            receive,
+        )
+
+    async def invoke(index: int) -> None:
+        request = build_request()
+        prepared = PreparedWebhookIngestion(
+            inbox_id=uuid.uuid4(),
+            clsid=clsid,
+            request_id=f"request-{index}",
+            received_at=datetime.now(UTC),
+            source_ip=f"203.0.113.{index + 10}",
+            method="POST",
+            content_type="application/json",
+            payload_raw=body,
+            payload_encoding=None,
+            headers_json={},
+        )
+        background_tasks = BackgroundTasks()
+
+        class SlowPersistenceService:
+            def __init__(self) -> None:
+                self.persist_calls = 0
+
+            def prepare_ingestion(
+                self,
+                incoming_clsid: str,
+                incoming_request: Request,
+                payload_raw: bytes,
+            ) -> PreparedWebhookIngestion:
+                assert incoming_clsid == clsid
+                assert incoming_request is request
+                assert payload_raw == body
+                return prepared
+
+            def persist_ingestion(self, prepared_ingestion: PreparedWebhookIngestion) -> None:
+                self.persist_calls += 1
+                sleep(persist_delay_seconds)
+                assert prepared_ingestion is prepared
+
+        service = SlowPersistenceService()
+        started = perf_counter()
+        response = await ingest_webhook(clsid, request, background_tasks, service)
+        latencies.append(perf_counter() - started)
+
+        assert response.status == "accepted"
+        assert response.request_id == prepared.request_id
+        assert service.persist_calls == 0
+        assert len(background_tasks.tasks) == 1
+        background_batches.append(background_tasks)
+
+    async with anyio.create_task_group() as task_group:
+        for index in range(concurrent_requests):
+            task_group.start_soon(invoke, index)
+
+    ordered_latencies = sorted(latencies)
+    p95_latency = ordered_latencies[ceil(len(ordered_latencies) * 0.95) - 1]
+    max_latency = ordered_latencies[-1]
+
+    assert p95_latency < p95_target_seconds
+    assert max_latency < max_target_seconds
+
+    async with anyio.create_task_group() as task_group:
+        for background_tasks in background_batches:
+            task_group.start_soon(background_tasks)
+
+
+@pytest.mark.anyio
+async def test_post_hook_defers_persistence_to_background_tasks() -> None:
+    body = b'{"ok": true}'
+
+    async def receive() -> dict[str, object]:
+        return {
+            "type": "http.request",
+            "body": body,
+            "more_body": False,
+        }
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/hook/550e8400-e29b-41d4-a716-446655440009",
+            "headers": [],
+            "client": ("203.0.113.10", 12345),
+        },
+        receive,
+    )
+    prepared = PreparedWebhookIngestion(
+        inbox_id=uuid.uuid4(),
+        clsid="550e8400-e29b-41d4-a716-446655440009",
+        request_id="request-123",
+        received_at=datetime.now(UTC),
+        source_ip="203.0.113.10",
+        method="POST",
+        content_type="application/json",
+        payload_raw=body,
+        payload_encoding=None,
+        headers_json={},
+    )
+    background_tasks = BackgroundTasks()
+
+    class StubWebhookService:
+        def __init__(self) -> None:
+            self.persist_calls: list[PreparedWebhookIngestion] = []
+
+        def prepare_ingestion(self, clsid: str, incoming_request: Request, payload_raw: bytes) -> PreparedWebhookIngestion:
+            assert clsid == prepared.clsid
+            assert incoming_request is request
+            assert payload_raw == body
+            return prepared
+
+        def persist_ingestion(self, prepared_ingestion: PreparedWebhookIngestion) -> None:
+            self.persist_calls.append(prepared_ingestion)
+
+    service = StubWebhookService()
+
+    response = await ingest_webhook(prepared.clsid, request, background_tasks, service)
+
+    assert response.status == "accepted"
+    assert response.request_id == prepared.request_id
+    assert service.persist_calls == []
+    assert len(background_tasks.tasks) == 1
+
+    await background_tasks()
+
+    assert service.persist_calls == [prepared]
 
 
 def test_openapi_includes_hook_route() -> None:

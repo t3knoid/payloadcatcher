@@ -114,7 +114,7 @@ Purpose: verify provider-agnostic capture behavior and fast acknowledgement sema
 | QA-005-04 | Binary payload is accepted and stored safely | API | implemented | Binary payload does not break parsing or storage. |
 | QA-005-05 | Unknown or expired `clsid` returns a safe `404` error envelope | API | implemented | Response contains safe error details and request correlation. |
 | QA-005-06 | Oversized payload returns `413` with safe error response | API | implemented | Payload size limits are enforced with documented failure semantics. |
-| QA-005-07 | Burst traffic keeps the ack path responsive | API/Load | ready | Concurrent limiter coverage exists; end-to-end latency validation still needs a dedicated load harness. |
+| QA-005-07 | Burst traffic keeps the ack path responsive | API/Load | implemented | A burst-latency benchmark confirms the hook ack path stays under the defined response-time ceiling while slow persistence work remains queued in background tasks. |
 | QA-005-08 | Invalid `Content-Type` header returns `415` with safe error response | API | implemented | Malformed media type values are rejected with the documented safe envelope. |
 
 ## Suite QA-006 Inbox Viewer, Search, And Pagination
