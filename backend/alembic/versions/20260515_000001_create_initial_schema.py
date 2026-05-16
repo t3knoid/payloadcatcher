@@ -50,7 +50,7 @@ def upgrade() -> None:
         sa.Column("headers_json", sa.JSON(), nullable=False),
         sa.Column("gps_lat", sa.Numeric(precision=9, scale=6), nullable=True),
         sa.Column("gps_lng", sa.Numeric(precision=9, scale=6), nullable=True),
-        sa.Column("consent", sa.Boolean(), server_default=sa.text("0"), nullable=False),
+        sa.Column("consent", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.ForeignKeyConstraint(["inbox_id"], ["inboxes.id"], name=op.f("fk_visit_metadata_inbox_id_inboxes"), ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_visit_metadata")),
     )
@@ -76,7 +76,7 @@ def upgrade() -> None:
         sa.Column("payload_yaml", sa.Text(), nullable=False),
         sa.Column("source_ip", sa.Text(), nullable=False),
         sa.Column("dedup_key", sa.Text(), nullable=True),
-        sa.Column("is_duplicate", sa.Boolean(), server_default=sa.text("0"), nullable=False),
+        sa.Column("is_duplicate", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.ForeignKeyConstraint(["inbox_id"], ["inboxes.id"], name=op.f("fk_webhook_events_inbox_id_inboxes"), ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_webhook_events")),
         sa.UniqueConstraint("request_id", name=op.f("uq_webhook_events_request_id")),

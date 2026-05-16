@@ -6,6 +6,13 @@ import type { BootstrapResponse, InboxEventSummary, InboxResponse } from '@/type
 
 const DEFAULT_LIMIT = 50;
 
+type LoadInboxOptions = {
+  q?: string;
+  cursor?: string | null;
+  cursorHistory?: string[];
+  loadingState?: 'primary' | 'pagination';
+};
+
 const buildSafeMessage = (error: unknown) => {
   if (error instanceof ApiClientError) {
     return error.message;
@@ -25,10 +32,16 @@ export const useInboxStore = defineStore('inbox', () => {
   const copied = ref(false);
   const error = ref<string | null>(null);
   const activeClsid = ref<string | null>(null);
+  const currentCursor = ref<string | null>(null);
+  const cursorHistory = ref<string[]>([]);
 
   const selectedEvent = computed(() => {
     return events.value.find((event) => event.request_id === selectedRequestId.value) ?? events.value[0] ?? null;
   });
+
+  const currentPage = computed(() => cursorHistory.value.length + 1);
+  const hasNextPage = computed(() => Boolean(inbox.value?.next_token));
+  const hasPreviousPage = computed(() => cursorHistory.value.length > 0);
 
   const callbackUrl = computed(() => {
     return bootstrap.value?.callback_url ?? inbox.value?.hook_url ?? '';
@@ -61,19 +74,21 @@ export const useInboxStore = defineStore('inbox', () => {
     return events.value.length > 0 ? 'Listening' : 'Waiting';
   });
 
-  const applyInbox = (payload: InboxResponse, mode: 'replace' | 'append') => {
+  const applyInbox = (payload: InboxResponse) => {
     inbox.value = payload;
-    events.value = mode === 'append' ? [...events.value, ...payload.events] : payload.events;
+    events.value = payload.events;
 
     if (!selectedRequestId.value || !events.value.some((event) => event.request_id === selectedRequestId.value)) {
       selectedRequestId.value = events.value[0]?.request_id ?? null;
     }
   };
 
-  const loadInbox = async (clsid: string, options?: { q?: string; cursor?: string | null; mode?: 'replace' | 'append' }) => {
+  const loadInbox = async (clsid: string, options?: LoadInboxOptions) => {
     activeClsid.value = clsid;
     error.value = null;
-    if ((options?.mode ?? 'replace') === 'replace') {
+    search.value = options?.q ?? '';
+
+    if ((options?.loadingState ?? 'primary') === 'primary') {
       loading.value = true;
     } else {
       loadingMore.value = true;
@@ -85,7 +100,9 @@ export const useInboxStore = defineStore('inbox', () => {
         cursor: options?.cursor,
         limit: DEFAULT_LIMIT,
       });
-      applyInbox(payload, options?.mode ?? 'replace');
+      applyInbox(payload);
+      currentCursor.value = options?.cursor ?? null;
+      cursorHistory.value = [...(options?.cursorHistory ?? [])];
     } catch (caughtError) {
       error.value = buildSafeMessage(caughtError);
     } finally {
@@ -102,7 +119,7 @@ export const useInboxStore = defineStore('inbox', () => {
       const payload = await apiClient.bootstrapInbox();
       bootstrap.value = payload;
       activeClsid.value = payload.clsid;
-      await loadInbox(payload.clsid, { mode: 'replace' });
+      await loadInbox(payload.clsid);
     } catch (caughtError) {
       error.value = buildSafeMessage(caughtError);
       loading.value = false;
@@ -114,10 +131,30 @@ export const useInboxStore = defineStore('inbox', () => {
       return;
     }
 
+    const nextCursor = inbox.value.next_token;
+    const nextHistory = [...cursorHistory.value, nextCursor];
+
     await loadInbox(activeClsid.value, {
       q: search.value || undefined,
-      cursor: inbox.value.next_token,
-      mode: 'append',
+      cursor: nextCursor,
+      cursorHistory: nextHistory,
+      loadingState: 'pagination',
+    });
+  };
+
+  const loadPreviousPage = async () => {
+    if (!activeClsid.value || cursorHistory.value.length === 0 || loadingMore.value) {
+      return;
+    }
+
+    const previousHistory = cursorHistory.value.slice(0, -1);
+    const previousCursor = previousHistory.at(-1) ?? null;
+
+    await loadInbox(activeClsid.value, {
+      q: search.value || undefined,
+      cursor: previousCursor,
+      cursorHistory: previousHistory,
+      loadingState: 'pagination',
     });
   };
 
@@ -129,7 +166,8 @@ export const useInboxStore = defineStore('inbox', () => {
 
     await loadInbox(activeClsid.value, {
       q: value || undefined,
-      mode: 'replace',
+      cursor: null,
+      cursorHistory: [],
     });
   };
 
@@ -165,11 +203,17 @@ export const useInboxStore = defineStore('inbox', () => {
     clearBootstrap,
     copied,
     copyCallbackUrl,
+    currentCursor,
+    currentPage,
+    cursorHistory,
     error,
     events,
+    hasNextPage,
+    hasPreviousPage,
     inbox,
     loadInbox,
     loadNextPage,
+    loadPreviousPage,
     loading,
     loadingMore,
     refreshSearch,

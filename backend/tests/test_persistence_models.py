@@ -1,9 +1,9 @@
 from sqlalchemy import LargeBinary
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.schema import CreateIndex
+from sqlalchemy.schema import CreateIndex, CreateTable
 
 from app.persistence.base import Base
-from app.persistence.models import WebhookEvent
+from app.persistence.models import VisitMetadata, WebhookEvent
 
 
 def test_persistence_metadata_contains_expected_tables() -> None:
@@ -28,3 +28,11 @@ def test_webhook_events_payload_storage_and_indexes_match_contract() -> None:
     compiled_index = str(CreateIndex(descending_index).compile(dialect=postgresql.dialect()))
 
     assert "received_at DESC" in compiled_index
+
+
+def test_boolean_server_defaults_compile_for_postgresql() -> None:
+    visit_metadata_ddl = str(CreateTable(VisitMetadata.__table__).compile(dialect=postgresql.dialect()))
+    webhook_events_ddl = str(CreateTable(WebhookEvent.__table__).compile(dialect=postgresql.dialect()))
+
+    assert 'consent BOOLEAN DEFAULT false NOT NULL' in visit_metadata_ddl
+    assert 'is_duplicate BOOLEAN DEFAULT false NOT NULL' in webhook_events_ddl

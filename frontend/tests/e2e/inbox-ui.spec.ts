@@ -102,6 +102,30 @@ const errorEnvelope = {
   request_id: 'req-error-001',
 };
 
+const filterInboxPayload = (payload: typeof inboxFirstPage | typeof rotatedInboxFirstPage, query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    next_token: null,
+    events: payload.events.filter((event) => {
+      const searchableValue = [
+        event.request_id,
+        event.method,
+        event.source_ip_masked,
+        event.payload_yaml,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchableValue.includes(normalizedQuery);
+    }),
+  };
+};
+
 const routeInboxApi = async (
   page: Parameters<typeof test.beforeEach>[0]['page'],
   options?: {
@@ -138,11 +162,11 @@ const routeInboxApi = async (
     const defaultInboxPayload = inboxByClsid[clsid] ?? inboxFirstPage;
 
     if (options?.initialDelayMs && !query && !cursor) {
+      await new Promise((resolve) => setTimeout(resolve, options.initialDelayMs));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(defaultInboxPayload),
-        delay: options.initialDelayMs,
       });
       return;
     }
@@ -161,6 +185,8 @@ const routeInboxApi = async (
       payload = emptyInbox;
     } else if (cursor === 'cursor-next' && clsid === CLSID) {
       payload = inboxSecondPage;
+    } else if (query) {
+      payload = filterInboxPayload(defaultInboxPayload, query);
     }
 
     inboxCalls += 1;
@@ -238,9 +264,10 @@ test.describe('QA-011 inbox UI flows', () => {
     expect(payloadBox!.width).toBeGreaterThan(listBox!.width);
 
     await page.getByTestId('request-req-002').click();
-    await expect(page.getByText('email: ada@example.test')).toBeVisible();
-    await expect(page.getByText('Request ID')).toBeVisible();
-    await expect(page.getByText('req-002')).toBeVisible();
+    const payloadPanelContent = page.getByTestId('payload-panel');
+    await expect(payloadPanelContent).toContainText('email: ada@example.test');
+    await expect(payloadPanelContent).toContainText('Request ID');
+    await expect(payloadPanelContent).toContainText('req-002');
   });
 
   test('stacks panels on mobile and supports paging plus empty search states', async ({ page }) => {
@@ -258,11 +285,92 @@ test.describe('QA-011 inbox UI flows', () => {
     expect(payloadBox).not.toBeNull();
     expect(listBox!.y).toBeLessThan(payloadBox!.y);
 
-    await page.getByRole('button', { name: 'Load more requests' }).click();
+    await expect(page.getByText('Page 1')).toBeVisible();
+    await page.getByRole('button', { name: 'Next page' }).click();
+    await expect(page.getByText('Page 2')).toBeVisible();
+    await expect(page).toHaveURL(new RegExp('cursor=cursor-next'));
+    await expect(page).toHaveURL(new RegExp('history=cursor-next'));
     await expect(page.getByTestId('request-req-001')).toBeVisible();
 
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('Page 2')).toBeVisible();
+    await expect(page.getByTestId('request-req-001')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Previous page' }).click();
+    await expect(page.getByText('Page 1')).toBeVisible();
+    await expect(page).not.toHaveURL(new RegExp('cursor=cursor-next'));
+
     await page.getByLabel('Search requests').fill('nothing');
+    await expect(page).toHaveURL(new RegExp('q=nothing'));
     await expect(page.getByText('No captured requests match this view yet.')).toBeVisible();
+  });
+
+  test('keeps the mobile header branding on one row without horizontal overflow', async ({ page }) => {
+    test.skip(test.info().project.name !== 'mobile-chrome', 'Mobile header assertions run in the mobile Chromium project only.');
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/inbox/${CLSID}`, { waitUntil: 'domcontentloaded' });
+
+    const overflowState = await page.evaluate(() => {
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      };
+    });
+
+    expect(overflowState.scrollWidth).toBeLessThanOrEqual(overflowState.clientWidth);
+
+    const menu = page.getByRole('button', { name: 'Open navigation' });
+    const logo = page.getByAltText('PayloadCatcher');
+    const wordmark = page.locator('.shell__wordmark');
+    const menuBox = await menu.boundingBox();
+    const logoBox = await logo.boundingBox();
+    const wordmarkBox = await wordmark.boundingBox();
+
+    expect(menuBox).not.toBeNull();
+    expect(logoBox).not.toBeNull();
+    expect(wordmarkBox).not.toBeNull();
+    expect(logoBox!.x).toBeGreaterThan(menuBox!.x);
+    expect(wordmarkBox!.x).toBeGreaterThan(logoBox!.x);
+    expect(Math.abs(menuBox!.y - logoBox!.y)).toBeLessThan(40);
+    expect(Math.abs(logoBox!.y - wordmarkBox!.y)).toBeLessThan(40);
+  });
+
+  test('preserves inbox pagination state across browser back and forward navigation', async ({ page }) => {
+    test.skip(test.info().project.name !== 'chromium', 'Browser history assertions run in the desktop Chromium project only.');
+
+    await page.goto(`/inbox/${CLSID}`, { waitUntil: 'domcontentloaded' });
+
+    await page.getByRole('button', { name: 'Next page' }).click();
+    await expect(page.getByText('Page 2')).toBeVisible();
+    await expect(page).toHaveURL(new RegExp('cursor=cursor-next'));
+    await expect(page.getByTestId('request-req-001')).toBeVisible();
+
+    await page.goBack();
+    await expect(page).not.toHaveURL(new RegExp('cursor=cursor-next'));
+    await expect(page.getByText('Page 1')).toBeVisible();
+    await expect(page.getByTestId('request-req-003')).toBeVisible();
+
+    await page.goForward();
+    await expect(page).toHaveURL(new RegExp('cursor=cursor-next'));
+    await expect(page).toHaveURL(new RegExp('history=cursor-next'));
+    await expect(page.getByText('Page 2')).toBeVisible();
+    await expect(page.getByTestId('request-req-001')).toBeVisible();
+  });
+
+  test('filters the request list as the search query changes', async ({ page }) => {
+    test.skip(test.info().project.name !== 'chromium', 'Search filter assertions run in the desktop Chromium project only.');
+
+    await page.goto(`/inbox/${CLSID}`, { waitUntil: 'domcontentloaded' });
+
+    await page.getByLabel('Search requests').fill('signup');
+    await expect(page).toHaveURL(new RegExp('q=signup'));
+    await expect(page.getByTestId('request-req-002')).toBeVisible();
+    await expect(page.getByTestId('request-req-003')).toHaveCount(0);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByLabel('Search requests')).toHaveValue('signup');
+    await expect(page.getByTestId('request-req-002')).toBeVisible();
   });
 
   test('shows readable loading and error banners during inbox refreshes', async ({ page, context }) => {
@@ -274,7 +382,7 @@ test.describe('QA-011 inbox UI flows', () => {
     await routeInboxApi(page, { initialDelayMs: 1200, errorQuery: 'error-state' });
 
     const navigation = page.goto(`/inbox/${CLSID}`, { waitUntil: 'commit' });
-    await expect(page.getByText('Loading inbox events…')).toBeVisible();
+  await expect(page.getByTestId('event-list-panel').getByText('Loading inbox events…')).toBeVisible();
     await navigation;
 
     await expect(page.getByTestId('request-req-003')).toBeVisible();

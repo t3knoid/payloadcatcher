@@ -192,6 +192,7 @@ Purpose: verify the operator-facing UI matches the documented layout and interac
 | QA-011-04 | Mobile layout stacks list before payload panel | E2E/Visual | implemented | Small-device flow preserves request selection behavior. |
 | QA-011-05 | Clicking a request updates the selected payload panel | E2E | implemented | Selected payload changes without unsafe rendering. |
 | QA-011-06 | Empty, loading, and error states remain user-readable | E2E/Manual | implemented | UI surfaces safe operator-friendly states when data is absent or failing. |
+| QA-011-07 | Search and pagination state survive reloads on direct inbox routes | E2E | implemented | Query-backed `q` and cursor state restore the filtered inbox page after reload. |
 
 ## 6. Minimum Regression Packs
 
@@ -228,21 +229,21 @@ Current automated coverage in the repository maps to these suites:
 
 Backend regression:
 
-```powershell
+```bash
 cd backend
 pytest
 ```
 
 Focused migration regression:
 
-```powershell
+```bash
 cd backend
 pytest tests/test_persistence_models.py tests/test_migrations.py
 ```
 
 Frontend checks:
 
-```powershell
+```bash
 cd frontend
 npm run lint
 npm run test
@@ -251,7 +252,7 @@ npm run build
 
 End-to-end checks:
 
-```powershell
+```bash
 cd frontend
 npx playwright install chromium
 npm run test:e2e

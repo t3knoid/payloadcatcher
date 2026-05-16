@@ -16,4 +16,14 @@ describe('router', () => {
     expect(result.name).toBe('inbox');
     expect(result.params.clsid).toBe('550e8400-e29b-41d4-a716-446655440000');
   });
+
+  it('keeps inbox query params for search and pagination state', () => {
+    const router = buildRouter();
+    const result = router.resolve('/inbox/550e8400-e29b-41d4-a716-446655440000?q=signup&cursor=cursor-next&history=cursor-next');
+
+    expect(result.name).toBe('inbox');
+    expect(result.query.q).toBe('signup');
+    expect(result.query.cursor).toBe('cursor-next');
+    expect(result.query.history).toBe('cursor-next');
+  });
 });

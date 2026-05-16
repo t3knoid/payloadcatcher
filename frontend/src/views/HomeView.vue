@@ -33,10 +33,13 @@ onMounted(() => {
         :loading-more="store.loadingMore"
         :selected-request-id="store.selectedRequestId"
         :search-value="store.search"
-        :has-next-page="Boolean(store.inbox?.next_token)"
+        :current-page="store.currentPage"
+        :has-next-page="store.hasNextPage"
+        :has-previous-page="store.hasPreviousPage"
         @search="store.refreshSearch"
         @select="store.selectRequest"
         @next="store.loadNextPage"
+        @previous="store.loadPreviousPage"
       />
       <PayloadPanel :event="store.selectedEvent" />
     </section>

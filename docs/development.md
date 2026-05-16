@@ -40,7 +40,7 @@ Operating system support:
 
 - Development is expected to work on Windows, macOS, and Linux.
 - Production deployment may target Linux-based hosting.
-- Commands in this guide use PowerShell examples where helpful, but equivalent shell commands should remain feasible on other supported operating systems.
+- Commands in this guide use Linux shell examples. If you are developing on Windows or macOS, adapt activation and file-copy syntax for your local shell.
 
 ## 3. Recommended VS Code Extensions
 
@@ -77,7 +77,7 @@ payloadcatcher/
 
 If your local structure differs, adjust path-based commands accordingly.
 
-If you are not on Windows, use equivalent shell activation and path syntax for your environment.
+If you are not using a Linux-compatible shell locally, adapt activation and path syntax for your environment.
 
 ## 5. Environment Configuration
 
@@ -129,29 +129,53 @@ Never commit secrets in local env files.
 
 From repository root:
 
-```powershell
+```bash
 cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+source .venv/bin/activate
 python -m pip install --upgrade pip
 ```
 
 Install dependencies using the backend project definition:
 
-```powershell
+```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-Apply database migrations:
+Create the PostgreSQL database referenced by `DATABASE_URL` before running Alembic for the first time.
+
+Example using the default local settings from Section 5:
+
+```bash
+createdb -h localhost -p 5432 -U postgres payloadcatcher
+```
+
+If `createdb` is not available, use `psql`:
+
+```bash
+psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE payloadcatcher"
+```
+
+PowerShell example:
 
 ```powershell
+createdb -h localhost -p 5432 -U postgres payloadcatcher
+```
+
+When you run `createdb` or `psql` from PowerShell, ensure the PostgreSQL `bin` directory is on `PATH` so those commands resolve.
+
+If you use a different database name or PostgreSQL role in `DATABASE_URL`, create that database instead. When running through Docker Compose, the `db` service creates the `payloadcatcher` database automatically.
+
+Apply database migrations:
+
+```bash
 alembic upgrade head
 ```
 
 Migration workflow:
 
-```powershell
+```bash
 alembic revision --autogenerate -m "describe change"
 alembic upgrade head
 alembic downgrade -1
@@ -172,7 +196,7 @@ Rollback procedure:
 
 Run backend in reload mode:
 
-```powershell
+```bash
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -198,7 +222,7 @@ Reverse proxy note:
 
 From repository root:
 
-```powershell
+```bash
 cd frontend
 npm install
 npx playwright install chromium
@@ -207,7 +231,7 @@ npm run dev
 
 Frontend quality checks:
 
-```powershell
+```bash
 cd frontend
 npm run lint
 npm run test
@@ -223,7 +247,7 @@ The scaffold uses Vue Router history mode for `/` and `/inbox/{clsid}` and uses 
 
 Optional Docker Compose workflow:
 
-```powershell
+```bash
 docker compose up --build frontend api db
 ```
 
@@ -231,7 +255,7 @@ The Compose frontend service binds Vite to `0.0.0.0:5173` and targets the backen
 
 ## 8. Run the Site from Source
 
-1. Start PostgreSQL and ensure DATABASE_URL is reachable.
+1. Start PostgreSQL, create the database referenced by `DATABASE_URL` if it does not exist yet, and ensure the connection is reachable.
 2. Start backend (Section 6).
 3. Start frontend (Section 7).
 4. Open the frontend URL.
@@ -289,42 +313,42 @@ Use [qa-test-guide.md](qa-test-guide.md) as the source of truth for QA suite def
 
 Backend tests:
 
-```powershell
+```bash
 cd backend
 pytest
 ```
 
 Bootstrap endpoint regression:
 
-```powershell
+```bash
 cd backend
 pytest tests/test_inbox_service.py tests/test_bootstrap_api.py
 ```
 
 Hook ingestion regression:
 
-```powershell
+```bash
 cd backend
 pytest tests/test_webhook_service.py tests/test_hook_api.py
 ```
 
 Inbox viewer regression:
 
-```powershell
+```bash
 cd backend
 pytest tests/test_inbox_viewer_service.py tests/test_inbox_viewer_api.py
 ```
 
 Migration verification:
 
-```powershell
+```bash
 cd backend
 pytest tests/test_persistence_models.py tests/test_migrations.py
 ```
 
 Frontend checks:
 
-```powershell
+```bash
 cd frontend
 npm run lint
 npm run test
@@ -332,14 +356,14 @@ npm run test
 
 End-to-end tests (when configured):
 
-```powershell
+```bash
 npx playwright install chromium
 npm run test:e2e
 ```
 
 Docker Compose development stack:
 
-```powershell
+```bash
 docker compose up --build
 ```
 

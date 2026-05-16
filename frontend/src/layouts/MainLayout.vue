@@ -14,8 +14,10 @@ defineProps<{
           <span></span>
         </button>
         <div>
-          <p class="shell__eyebrow">Provider-agnostic webhook capture</p>
-          <h1 class="shell__brand">PayloadCatcher</h1>
+          <h1 class="shell__brand">
+            <img class="shell__logo" src="/logo.png" alt="PayloadCatcher" />
+            <span class="shell__wordmark">payloadcat.ch</span>
+          </h1>
         </div>
       </div>
       <span class="shell__status">{{ statusLabel }}</span>

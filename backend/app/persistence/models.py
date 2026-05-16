@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import uuid
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, JSON, LargeBinary, Numeric, String, Text, Uuid, func, text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, JSON, LargeBinary, Numeric, String, Text, Uuid, false, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.persistence.base import Base
@@ -57,7 +57,7 @@ class VisitMetadata(Base):
     headers_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
     gps_lat: Mapped[float | None] = mapped_column(Numeric(9, 6))
     gps_lng: Mapped[float | None] = mapped_column(Numeric(9, 6))
-    consent: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=text("0"))
+    consent: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
 
 
 class WebhookEvent(Base):
@@ -85,4 +85,4 @@ class WebhookEvent(Base):
     payload_yaml: Mapped[str] = mapped_column(Text, nullable=False)
     source_ip: Mapped[str] = mapped_column(Text, nullable=False)
     dedup_key: Mapped[str | None] = mapped_column(Text)
-    is_duplicate: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=text("0"))
+    is_duplicate: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())

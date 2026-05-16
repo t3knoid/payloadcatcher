@@ -29,11 +29,13 @@
 +-------------------------------------+--------------------------------------------+
 | Search requests                     | Payload (YAML)                             |
 | [ Search by id, ip, method... ]     | ----------------------------------------   |
-|                                     | id: 01jv4d6...                             |
-| > 12:03:02 POST /hook 203.0.113.10  | received_at: 2026-05-15T12:03:02Z          |
-|   12:01:55 POST /hook 203.0.113.10  | headers:                                    |
-|   11:58:44 POST /hook 198.51.100.8  |   content-type: application/json            |
-|   11:42:30 POST /hook 198.51.100.8  | payload:                                    |
+| [Prev] Page 1 [Next]                | id: 01jv4d6...                             |
+| > 12:03:02 POST                     | received_at: 2026-05-15T12:03:02Z          |
+|   req-003... 203.0.113.10           | headers:                                    |
+|   type: patch id: 3 status: queued  |   content-type: application/json            |
+|   12:01:55 POST                     | payload:                                    |
+|   req-002... 203.0.113.10           |   foo: bar                                  |
+|   type: signup email: ada@...       |   count: 2                                  |
 |                                     |   foo: bar                                  |
 |                                     |   count: 2                                  |
 +-------------------------------------+--------------------------------------------+
@@ -53,9 +55,13 @@ Column ratio target: left 30% and right 70%.
 +--------------------------------------+
 | Search requests                       |
 | [ Search... ]                         |
-| > 12:03:02 POST 203.0.113.10          |
-|   12:01:55 POST 203.0.113.10          |
-|   11:58:44 POST 198.51.100.8          |
+| [Prev] Page 1 [Next]                  |
+| > 12:03:02 POST                       |
+|   req-003... 203.0.113.10             |
+|   type: patch id: 3 status: queued    |
+|   12:01:55 POST                       |
+|   req-002... 203.0.113.10             |
+|   type: signup email: ada@...         |
 +--------------------------------------+
 | Selected payload (YAML)               |
 | id: 01jv4d6...                        |
@@ -82,3 +88,6 @@ Mobile behavior notes:
    - Load associated YAML payload into detail panel.
 3. Search behavior:
    - Filter left list by request id, method, source IP, and payload preview text.
+4. Pagination behavior:
+   - Show previous and next controls with the current page indicator.
+   - Preserve the active filter and cursor-backed page when the direct inbox route reloads.

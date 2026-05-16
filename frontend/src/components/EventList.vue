@@ -7,13 +7,16 @@ const props = defineProps<{
   loadingMore: boolean;
   selectedRequestId: string | null;
   searchValue: string;
+  currentPage: number;
   hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }>();
 
 const emit = defineEmits<{
   search: [value: string];
   select: [requestId: string];
   next: [];
+  previous: [];
 }>();
 
 const onInput = (event: Event) => {
@@ -29,6 +32,24 @@ const formatTimestamp = (value: string) => {
     month: 'short',
     day: 'numeric',
   }).format(new Date(value));
+};
+
+const truncateRequestId = (value: string) => {
+  if (value.length <= 22) {
+    return value;
+  }
+
+  return `${value.slice(0, 12)}...${value.slice(-6)}`;
+};
+
+const buildPreview = (value: string) => {
+  const collapsed = value.replace(/\s+/g, ' ').trim();
+
+  if (collapsed.length <= 100) {
+    return collapsed;
+  }
+
+  return `${collapsed.slice(0, 97)}...`;
 };
 </script>
 
@@ -64,22 +85,34 @@ const formatTimestamp = (value: string) => {
             <span>{{ event.method }}</span>
           </div>
           <div class="event-list__row event-list__row--muted">
+            <span>{{ truncateRequestId(event.request_id) }}</span>
             <span>{{ event.source_ip_masked }}</span>
-            <span>{{ event.content_type || 'unknown content type' }}</span>
           </div>
+          <p class="event-list__preview">{{ buildPreview(event.payload_yaml) }}</p>
         </button>
       </li>
     </ul>
 
-    <button
-      v-if="hasNextPage"
-      class="panel__more"
-      type="button"
-      aria-label="Load more requests"
-      :disabled="loadingMore"
-      @click="emit('next')"
-    >
-      {{ loadingMore ? 'Loading…' : 'Load more' }}
-    </button>
+    <div class="panel__pagination" aria-label="Pagination controls">
+      <button
+        class="panel__more panel__more--secondary"
+        type="button"
+        aria-label="Previous page"
+        :disabled="!hasPreviousPage || loadingMore"
+        @click="emit('previous')"
+      >
+        Previous
+      </button>
+      <span class="panel__page-indicator">Page {{ currentPage }}</span>
+      <button
+        class="panel__more"
+        type="button"
+        aria-label="Next page"
+        :disabled="!hasNextPage || loadingMore"
+        @click="emit('next')"
+      >
+        {{ loadingMore ? 'Loading…' : 'Next' }}
+      </button>
+    </div>
   </section>
 </template>

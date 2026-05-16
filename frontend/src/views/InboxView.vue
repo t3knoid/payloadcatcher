@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import CallbackCard from '@/components/CallbackCard.vue';
 import EventList from '@/components/EventList.vue';
@@ -9,7 +9,65 @@ import MainLayout from '@/layouts/MainLayout.vue';
 import { useInboxStore } from '@/stores/inbox';
 
 const route = useRoute();
+const router = useRouter();
 const store = useInboxStore();
+
+let skipNextRouteSync = false;
+
+const queryValue = (value: string | string[] | null | undefined) => {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+
+  return value ?? '';
+};
+
+const parseCursorHistory = () => {
+  const rawHistory = queryValue(route.query.history as string | string[] | null | undefined);
+  const history = rawHistory
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const cursor = queryValue(route.query.cursor as string | string[] | null | undefined) || null;
+
+  if (cursor && history.at(-1) !== cursor) {
+    history.push(cursor);
+  }
+
+  return {
+    cursor,
+    history,
+  };
+};
+
+const buildRouteQuery = () => {
+  const query: Record<string, string> = {};
+
+  if (store.search) {
+    query.q = store.search;
+  }
+
+  if (store.currentCursor) {
+    query.cursor = store.currentCursor;
+  }
+
+  if (store.cursorHistory.length > 0) {
+    query.history = store.cursorHistory.join(',');
+  }
+
+  return query;
+};
+
+const syncRouteWithStore = async (mode: 'push' | 'replace' = 'replace') => {
+  skipNextRouteSync = true;
+  await router[mode]({
+    name: 'inbox',
+    params: {
+      clsid: String(route.params.clsid ?? ''),
+    },
+    query: buildRouteQuery(),
+  });
+};
 
 const loadFromRoute = async () => {
   const clsid = String(route.params.clsid ?? '');
@@ -17,19 +75,44 @@ const loadFromRoute = async () => {
     return;
   }
 
+  const q = queryValue(route.query.q as string | string[] | null | undefined);
+  const { cursor, history } = parseCursorHistory();
+
   store.clearBootstrap();
-  await store.loadInbox(clsid, { mode: 'replace' });
+  await store.loadInbox(clsid, {
+    q: q || undefined,
+    cursor,
+    cursorHistory: history,
+    loadingState: history.length > 0 ? 'pagination' : 'primary',
+  });
 };
 
-onMounted(() => {
-  void loadFromRoute();
-});
+const handleSearch = async (value: string) => {
+  await store.refreshSearch(value);
+  await syncRouteWithStore();
+};
+
+const handleNext = async () => {
+  await store.loadNextPage();
+  await syncRouteWithStore('push');
+};
+
+const handlePrevious = async () => {
+  await store.loadPreviousPage();
+  await syncRouteWithStore('push');
+};
 
 watch(
-  () => route.params.clsid,
+  () => [route.params.clsid, route.query.q, route.query.cursor, route.query.history],
   () => {
+    if (skipNextRouteSync) {
+      skipNextRouteSync = false;
+      return;
+    }
+
     void loadFromRoute();
   },
+  { immediate: true },
 );
 </script>
 
@@ -52,10 +135,13 @@ watch(
         :loading-more="store.loadingMore"
         :selected-request-id="store.selectedRequestId"
         :search-value="store.search"
-        :has-next-page="Boolean(store.inbox?.next_token)"
-        @search="store.refreshSearch"
+        :current-page="store.currentPage"
+        :has-next-page="store.hasNextPage"
+        :has-previous-page="store.hasPreviousPage"
+        @search="handleSearch"
         @select="store.selectRequest"
-        @next="store.loadNextPage"
+        @next="handleNext"
+        @previous="handlePrevious"
       />
       <PayloadPanel :event="store.selectedEvent" />
     </section>
