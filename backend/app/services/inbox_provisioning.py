@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import ipaddress
 import logging
 import re
 import uuid
@@ -77,9 +78,16 @@ class InboxProvisioningService:
     def normalize_source_ip(self, client_host: str | None, forwarded_for: str | None) -> str:
         if client_host and client_host in self.settings.trusted_proxies and forwarded_for:
             first_forwarded = forwarded_for.split(",", maxsplit=1)[0].strip()
-            if first_forwarded:
+            if self._is_valid_ip_address(first_forwarded):
                 return first_forwarded
         return client_host or "unknown"
+
+    def _is_valid_ip_address(self, value: str) -> bool:
+        try:
+            ipaddress.ip_address(value)
+        except ValueError:
+            return False
+        return True
 
     def reuse_allowed_for_source_ip(self, stored_source_ip: str, current_source_ip: str, clsid: str) -> bool:
         if stored_source_ip != current_source_ip:

@@ -36,6 +36,15 @@ def test_normalize_source_ip_honors_forwarded_for_only_from_trusted_proxy() -> N
     assert untrusted_ip == "198.51.100.8"
 
 
+def test_normalize_source_ip_falls_back_when_forwarded_for_is_invalid() -> None:
+    settings = Settings(_env_file=None, trusted_proxies=["127.0.0.1", "::1"])
+    service = InboxProvisioningService(session=None, settings=settings)
+
+    normalized_ip = service.normalize_source_ip("127.0.0.1", "not-an-ip, 203.0.113.10")
+
+    assert normalized_ip == "127.0.0.1"
+
+
 def test_reuse_policy_logs_source_ip_change_as_risk_signal(caplog) -> None:
     settings = Settings(_env_file=None)
     service = InboxProvisioningService(session=None, settings=settings)
