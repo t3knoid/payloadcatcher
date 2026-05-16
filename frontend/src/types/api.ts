@@ -9,6 +9,9 @@ export interface ApiErrorEnvelope {
 
 export interface BootstrapRequest {
   timezone?: string;
+}
+
+export interface VisitMetadataUpdateRequest {
   gpsConsent?: boolean;
   gpsLat?: number;
   gpsLng?: number;

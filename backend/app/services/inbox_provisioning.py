@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import ipaddress
 import logging
 import re
+from typing import Literal, cast
 import uuid
 
 from fastapi import Depends, Request, Response
@@ -12,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
-from app.api.schemas.inbox import ProvisionInboxQuery
+from app.api.schemas.inbox import ProvisionInboxQuery, VisitMetadataUpdateRequest
 from app.core.config import Settings, get_settings
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_request_rate_limiter
 from app.persistence.models import Inbox, VisitMetadata
@@ -81,7 +82,7 @@ class InboxProvisioningService:
             max_age=self.settings.cookie_max_age,
             httponly=True,
             secure=self.settings.cookie_secure,
-            samesite=self.settings.cookie_samesite,
+            samesite=cast(Literal["lax", "strict", "none"], self.settings.cookie_samesite),
             path="/",
         )
 
@@ -159,7 +160,6 @@ class InboxProvisioningService:
         source_ip: str,
     ) -> None:
         user_agent = request.headers.get("user-agent")
-        gps_lat, gps_lng, gps_consent = self._resolve_gps_capture(query)
         visit = VisitMetadata(
             inbox_id=inbox.id,
             visited_at=now,
@@ -172,11 +172,38 @@ class InboxProvisioningService:
             tz=query.timezone,
             locality=self._resolve_locality(request),
             headers_json=self._sanitized_headers(request),
-            gps_lat=gps_lat,
-            gps_lng=gps_lng,
-            consent=gps_consent,
+            consent=False,
         )
         self.session.add(visit)
+
+    def update_visit_metadata(self, request: Request, payload: VisitMetadataUpdateRequest) -> None:
+        source_ip = self.normalize_source_ip(
+            request.client.host if request.client else None,
+            request.headers.get("x-forwarded-for"),
+        )
+        self.enforce_rate_limit(source_ip)
+        active_inbox = self._find_active_inbox(
+            request.cookies.get(self.settings.session_cookie_name),
+            self.clock(),
+            source_ip,
+        )
+        if active_inbox is None:
+            raise ApiError(404, "inbox_not_found", "Active inbox not found for session")
+
+        visit = self.session.scalar(
+            select(VisitMetadata)
+            .where(VisitMetadata.inbox_id == active_inbox.id)
+            .order_by(VisitMetadata.visited_at.desc(), VisitMetadata.id.desc())
+            .limit(1)
+        )
+        if visit is None:
+            raise ApiError(404, "visit_metadata_not_found", "Visit metadata not found for active inbox")
+
+        gps_lat, gps_lng, gps_consent = self._resolve_gps_capture(payload)
+        visit.gps_lat = gps_lat
+        visit.gps_lng = gps_lng
+        visit.consent = gps_consent
+        self.session.commit()
 
     def _sanitized_headers(self, request: Request) -> dict[str, str]:
         sanitized: dict[str, str] = {}
@@ -201,12 +228,12 @@ class InboxProvisioningService:
             return None
         return normalized[:128]
 
-    def _resolve_gps_capture(self, query: ProvisionInboxQuery) -> tuple[float | None, float | None, bool]:
-        if not query.gps_consent:
+    def _resolve_gps_capture(self, payload: VisitMetadataUpdateRequest) -> tuple[float | None, float | None, bool]:
+        if not payload.gps_consent:
             return None, None, False
         if not self.settings.gps_collection_enabled:
             return None, None, False
-        return query.gps_lat, query.gps_lng, True
+        return payload.gps_lat, payload.gps_lng, True
 
     def _build_hook_url(self, clsid: str) -> str:
         return f"{self.settings.base_url.rstrip('/')}/hook/{clsid}"

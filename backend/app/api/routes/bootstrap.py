@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.schemas.common import SafeErrorResponse
-from app.api.schemas.inbox import ProvisionInboxQuery, ProvisionInboxResponse
+from app.api.schemas.inbox import ProvisionInboxQuery, ProvisionInboxResponse, VisitMetadataUpdateRequest
 from app.services.inbox_provisioning import InboxProvisioningService, get_inbox_provisioning_service
 
 router = APIRouter(tags=["inbox"])
@@ -36,3 +36,23 @@ def provision_inbox(
         expires_at=result.expires_at,
         new_session=result.new_session,
     )
+
+
+@router.post(
+    "/visit-metadata",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Update visit metadata",
+    description="Persist consented visit metadata that should not be transported in URL parameters.",
+    responses={
+        404: {"model": SafeErrorResponse, "description": "Active inbox or visit metadata not found for session."},
+        429: {"model": SafeErrorResponse, "description": "Too many requests for the current source IP."},
+        500: {"model": SafeErrorResponse, "description": "Safe internal error envelope."},
+    },
+)
+def update_visit_metadata(
+    request: Request,
+    payload: VisitMetadataUpdateRequest,
+    service: Annotated[InboxProvisioningService, Depends(get_inbox_provisioning_service)],
+) -> Response:
+    service.update_visit_metadata(request, payload)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

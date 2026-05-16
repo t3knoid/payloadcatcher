@@ -1,9 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { bootstrapInbox, getInbox, getInboxEventDetail } = vi.hoisted(() => {
+const { bootstrapInbox, updateVisitMetadata, getInbox, getInboxEventDetail } = vi.hoisted(() => {
   return {
     bootstrapInbox: vi.fn(),
+    updateVisitMetadata: vi.fn(),
     getInbox: vi.fn(),
     getInboxEventDetail: vi.fn(),
   };
@@ -28,6 +29,7 @@ vi.mock('@/api/api-client', () => {
     ApiClientError,
     apiClient: {
       bootstrapInbox,
+      updateVisitMetadata,
       getInbox,
       getInboxEventDetail,
     },
@@ -119,6 +121,7 @@ describe('inbox store', () => {
     setActivePinia(createPinia());
     getInbox.mockReset();
     bootstrapInbox.mockReset();
+    updateVisitMetadata.mockReset();
     getInboxEventDetail.mockReset();
   });
 
@@ -227,7 +230,7 @@ describe('inbox store', () => {
     expect(store.detailError).toBe('Unable to load inbox data.');
   });
 
-  it('passes consent-aware metadata when bootstrapping the home inbox', async () => {
+  it('passes timezone metadata when bootstrapping the home inbox', async () => {
     const store = useInboxStore();
 
     bootstrapInbox.mockResolvedValueOnce({
@@ -242,13 +245,25 @@ describe('inbox store', () => {
 
     await store.bootstrapHome({
       timezone: 'America/New_York',
+    });
+
+    expect(bootstrapInbox).toHaveBeenCalledWith({
+      timezone: 'America/New_York',
+    });
+  });
+
+  it('submits precise visit metadata through the follow-up body endpoint', async () => {
+    const store = useInboxStore();
+
+    updateVisitMetadata.mockResolvedValueOnce(undefined);
+
+    await store.updateVisitMetadata({
       gpsConsent: true,
       gpsLat: 35.77959,
       gpsLng: -78.63818,
     });
 
-    expect(bootstrapInbox).toHaveBeenCalledWith({
-      timezone: 'America/New_York',
+    expect(updateVisitMetadata).toHaveBeenCalledWith({
       gpsConsent: true,
       gpsLat: 35.77959,
       gpsLng: -78.63818,

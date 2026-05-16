@@ -44,7 +44,7 @@ Current behavior:
 - Creates a new inbox and callback URL on first visit.
 - Reuses the same callback URL while the cookie-bound inbox is still inside the 24-hour TTL.
 - Rotates to a new callback URL after expiration.
-- Captures visit metadata for source IP, user-agent, browser and device hints, referer, primary language, optional timezone hint, optional trusted-proxy locality header, and GPS coordinates only after explicit opt-in.
+- Captures visit metadata for source IP, user-agent, browser and device hints, referer, primary language, optional timezone hint, and optional trusted-proxy locality header during provisioning.
 - Enforces per-source-IP rate limiting using `RATE_LIMIT_PER_MINUTE` and returns `429` with retry hints when the limit is exceeded.
 - Sets a session cookie with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
 - Treats source IP as a risk signal during active-session reuse and logs source-IP changes while preserving cookie-first continuity.
@@ -55,9 +55,6 @@ Request details:
 - Method: `GET`
 - Optional query params:
   - `timezone`: browser-provided timezone hint for visit metadata capture
-  - `gps_consent`: explicit opt-in flag for precise GPS collection
-  - `gps_lat`: optional latitude captured only when `gps_consent=true`
-  - `gps_lng`: optional longitude captured only when `gps_consent=true`
 
 Response shape:
 
@@ -77,9 +74,51 @@ Notes:
 - The callback URL always uses the canonical hook pattern.
 - The homepage privacy notice is expected to render before this request runs on first visit so browser metadata collection is disclosed at collection time.
 - Locality capture is best-effort and uses the configured `LOCALITY_HEADER_NAME` only when the incoming client is a trusted proxy.
-- GPS coordinates are stored only after explicit opt-in and may remain empty when the browser declines or cannot provide geolocation.
+- GPS coordinates are stored only after explicit opt-in through `POST /visit-metadata` and may remain empty when the browser declines or cannot provide geolocation.
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
 - Safe `500` error envelopes continue to apply to unhandled failures.
+
+### POST /visit-metadata
+
+Persist consented visit metadata that should not be transported in URL parameters.
+
+Current behavior:
+
+- Uses the active session cookie and current source IP normalization to find the active inbox.
+- Updates the most recent visit-metadata row for that active inbox.
+- Stores GPS coordinates only when `gps_consent=true` and the backend GPS collection setting remains enabled.
+- Leaves GPS empty when the browser declines or cannot provide geolocation.
+- Enforces the same per-source-IP rate limiting used by bootstrap.
+
+Request details:
+
+- Method: `POST`
+- Request body:
+
+```json
+{
+  "gps_consent": true,
+  "gps_lat": 35.77959,
+  "gps_lng": -78.63818
+}
+```
+
+Response details:
+
+- `204 No Content` when the metadata update is accepted.
+
+Error responses:
+
+- `404` when the active inbox or visit metadata row is missing for the session
+- `422` when the GPS payload is malformed
+- `429` when the source IP exceeds `RATE_LIMIT_PER_MINUTE`
+- `500` safe error envelope for unexpected failures
+
+Notes:
+
+- This route appears in Swagger and OpenAPI during local development on port `8000`.
+- GPS coordinates remain out of provisioning URLs, browser history, and proxy access logs.
+- The frontend treats this update as best effort and continues normal provisioning when geolocation is unavailable.
 
 ## Interactive API Documentation
 

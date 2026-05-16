@@ -11,6 +11,9 @@ class VisitMetadataCaptureQuery(BaseModel):
         default=None,
         description="Optional browser-provided timezone hint for visit metadata capture.",
     )
+
+
+class VisitMetadataUpdateRequest(BaseModel):
     gps_consent: bool = Field(
         default=False,
         description="Whether the browser user explicitly opted in to precise GPS collection.",
@@ -29,7 +32,7 @@ class VisitMetadataCaptureQuery(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_gps_pair(self) -> "VisitMetadataCaptureQuery":
+    def validate_gps_pair(self) -> "VisitMetadataUpdateRequest":
         if (self.gps_lat is None) != (self.gps_lng is None):
             raise ValueError("gps_lat and gps_lng must be provided together")
         if (self.gps_lat is not None or self.gps_lng is not None) and not self.gps_consent:

@@ -6,7 +6,7 @@ import EventList from '@/components/EventList.vue';
 import PayloadPanel from '@/components/PayloadPanel.vue';
 import MainLayout from '@/layouts/MainLayout.vue';
 import { useInboxStore } from '@/stores/inbox';
-import type { BootstrapRequest } from '@/types/api';
+import type { BootstrapRequest, VisitMetadataUpdateRequest } from '@/types/api';
 
 const store = useInboxStore();
 const PRIVACY_NOTICE_KEY = 'payloadcatcher_privacy_notice_ack';
@@ -45,37 +45,49 @@ const buildBootstrapRequest = async () => {
     timezone: resolveTimezone(),
   };
 
+  return request;
+};
+
+const buildVisitMetadataUpdate = async () => {
+  const payload: VisitMetadataUpdateRequest = {
+    gpsConsent: true,
+  };
+
   if (!gpsOptIn.value) {
-    return request;
+    return null;
   }
 
-  request.gpsConsent = true;
   try {
     const position = await requestPreciseLocation();
-    request.gpsLat = position.coords.latitude;
-    request.gpsLng = position.coords.longitude;
+    payload.gpsLat = position.coords.latitude;
+    payload.gpsLng = position.coords.longitude;
     privacyMessage.value = null;
   } catch {
     privacyMessage.value = 'Precise location was unavailable. Continuing with connection and browser metadata only.';
+    return null;
   }
 
-  return request;
+  return payload;
 };
 
 const runBootstrap = async () => {
   privacyActionPending.value = true;
   try {
-    const metadata = await buildBootstrapRequest();
-    await store.bootstrapHome(metadata);
+    const bootstrapMetadata = await buildBootstrapRequest();
+    await store.bootstrapHome(bootstrapMetadata);
+    const visitMetadataUpdate = await buildVisitMetadataUpdate();
+    if (visitMetadataUpdate) {
+      await store.updateVisitMetadata(visitMetadataUpdate);
+    }
   } finally {
     privacyActionPending.value = false;
   }
 };
 
 const acknowledgeAndStart = async () => {
-  privacyAcknowledged.value = true;
   window.localStorage.setItem(PRIVACY_NOTICE_KEY, 'accepted');
   await runBootstrap();
+  privacyAcknowledged.value = true;
 };
 
 onMounted(() => {
@@ -135,6 +147,7 @@ onMounted(() => {
     />
 
     <p v-if="store.error" class="error-banner">{{ store.error }}</p>
+  <p v-if="privacyMessage" class="privacy-info-banner">{{ privacyMessage }}</p>
 
     <section v-if="privacyAcknowledged" class="workspace-grid">
       <EventList

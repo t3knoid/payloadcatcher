@@ -9,9 +9,6 @@ Purpose: Provision or return the active callback URL for this visitor context.
 Query params:
 
 - `timezone` (optional, browser timezone hint for visit metadata capture)
-- `gps_consent` (optional, explicit opt-in flag for precise GPS collection)
-- `gps_lat` (optional, latitude captured only when `gps_consent=true`)
-- `gps_lng` (optional, longitude captured only when `gps_consent=true`)
 
 Response 200 shape:
 
@@ -32,15 +29,41 @@ Notes:
 - If expired, issue and return a new mapping.
 - `callback_url` always uses the canonical hook endpoint shape.
 - The response sets a cookie-bound session with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
-- Visit metadata capture includes source IP, user-agent, browser and device hints, referer, primary language, the optional timezone hint, best-effort trusted-proxy locality, and GPS only after explicit opt-in.
+- Visit metadata capture includes source IP, user-agent, browser and device hints, referer, primary language, the optional timezone hint, and best-effort trusted-proxy locality during provisioning.
 - Requests are rate limited per source IP using `RATE_LIMIT_PER_MINUTE`.
 - If source IP changes while the session cookie remains valid, the callback URL stays stable and the source-IP change is treated as a risk signal for logging and abuse analysis.
 - Locality capture uses the configured `LOCALITY_HEADER_NAME` only when the request comes through a trusted proxy.
-- GPS coordinates must not be stored unless the caller explicitly sets `gps_consent=true`.
+- GPS coordinates must not be stored unless the caller explicitly opts in through `POST /visit-metadata`.
 
 Errors:
 
 - 429 rate limited, with `Retry-After` and `error.details.retry_after_seconds`
+
+### 1.1A POST /visit-metadata
+
+Purpose: Persist consented precise GPS metadata for the active session without placing coordinates in the URL.
+
+Request body:
+
+- `gps_consent` (required, must be `true` when coordinates are supplied)
+- `gps_lat` (required with `gps_lng` when GPS data is supplied)
+- `gps_lng` (required with `gps_lat` when GPS data is supplied)
+
+Response:
+
+- 204 No Content on success
+
+Notes:
+
+- The route uses the active session cookie to locate the current inbox visit.
+- The route updates the most recent `visit_metadata` row for that active inbox.
+- GPS coordinates remain out of provisioning URLs and query strings.
+
+Errors:
+
+- 404 active inbox or visit metadata not found for session
+- 422 malformed GPS body
+- 429 rate limited
 
 ### 1.2 POST /hook/{clsid}
 

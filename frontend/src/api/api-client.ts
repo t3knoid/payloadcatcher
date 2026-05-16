@@ -1,5 +1,12 @@
 import { getApiBaseUrl } from '@/config/runtime';
-import type { ApiErrorEnvelope, BootstrapRequest, BootstrapResponse, InboxEventDetail, InboxResponse } from '@/types/api';
+import type {
+  ApiErrorEnvelope,
+  BootstrapRequest,
+  BootstrapResponse,
+  InboxEventDetail,
+  InboxResponse,
+  VisitMetadataUpdateRequest,
+} from '@/types/api';
 
 class ApiClientError extends Error {
   status: number;
@@ -53,13 +60,48 @@ const request = async <T>(path: string, init?: RequestInit, query?: Record<strin
   return (await response.json()) as T;
 };
 
+const requestWithoutJsonResponse = async (
+  path: string,
+  init?: RequestInit,
+  query?: Record<string, string | number | undefined | null>,
+): Promise<void> => {
+  const response = await fetch(buildUrl(path, query), {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
+
+  if (!response.ok) {
+    let payload: ApiErrorEnvelope | null = null;
+    try {
+      payload = (await response.json()) as ApiErrorEnvelope;
+    } catch {
+      payload = null;
+    }
+    throw new ApiClientError(response.status, payload);
+  }
+};
+
 export const apiClient = {
   bootstrapInbox(params?: BootstrapRequest): Promise<BootstrapResponse> {
     return request<BootstrapResponse>('/', undefined, {
       timezone: params?.timezone,
-      gps_consent: params?.gpsConsent,
-      gps_lat: params?.gpsLat,
-      gps_lng: params?.gpsLng,
+    });
+  },
+  updateVisitMetadata(payload: VisitMetadataUpdateRequest): Promise<void> {
+    return requestWithoutJsonResponse('/visit-metadata', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gps_consent: payload.gpsConsent,
+        gps_lat: payload.gpsLat,
+        gps_lng: payload.gpsLng,
+      }),
     });
   },
   getInbox(clsid: string, params?: { q?: string; cursor?: string | null; limit?: number }): Promise<InboxResponse> {

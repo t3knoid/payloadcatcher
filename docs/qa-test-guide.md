@@ -166,8 +166,8 @@ Purpose: verify metadata collection boundaries and privacy-visible behavior.
 | --- | --- | --- | --- | --- |
 | QA-009-01 | Visit metadata captures only approved fields | API/Manual | implemented | Stored metadata matches the documented allowlist, consent fields, and best-effort locality categories. |
 | QA-009-02 | Sensitive headers are not stored or exposed | API/Manual | implemented | Raw secrets do not appear in persistence, logs, or public responses. |
-| QA-009-03 | GPS data is collected only after explicit consent | E2E/Manual | implemented | No GPS values are stored without opt-in. |
-| QA-009-04 | Privacy notice is visible before or at collection time | E2E/Manual | implemented | Operator-visible privacy notice appears before the first inbox is provisioned in the browser. |
+| QA-009-03 | GPS data is collected only after explicit consent and stays out of provisioning URLs | E2E/Manual | implemented | No GPS values are stored without opt-in and consented coordinates are submitted in the request body rather than the URL. |
+| QA-009-04 | Privacy notice and GPS fallback messaging are visible before or at collection time | E2E/Manual | implemented | Operator-visible privacy notice appears before the first inbox is provisioned and geolocation fallback messaging remains visible when GPS is unavailable. |
 | QA-009-05 | Public viewer redacts source IP details by default | API/E2E | implemented | Network identifiers remain masked in bearer-link views. |
 
 ## Suite QA-010 Abuse Controls, Deduplication, And Retention

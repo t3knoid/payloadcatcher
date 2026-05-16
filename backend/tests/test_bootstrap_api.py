@@ -205,9 +205,6 @@ def test_visit_metadata_persists_gps_consent_and_trusted_locality(monkeypatch) -
         "/",
         params={
             "timezone": "America/New_York",
-            "gps_consent": "true",
-            "gps_lat": "35.77959",
-            "gps_lng": "-78.63818",
         },
         headers={
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/136.0.0.0 Safari/537.36",
@@ -220,6 +217,17 @@ def test_visit_metadata_persists_gps_consent_and_trusted_locality(monkeypatch) -
     )
 
     assert response.status_code == 200
+
+    gps_response = client.post(
+        "/visit-metadata",
+        json={
+            "gps_consent": True,
+            "gps_lat": 35.77959,
+            "gps_lng": -78.63818,
+        },
+    )
+
+    assert gps_response.status_code == 204
 
     with session_factory() as session:
         visit = session.scalar(select(VisitMetadata))
@@ -235,6 +243,25 @@ def test_visit_metadata_persists_gps_consent_and_trusted_locality(monkeypatch) -
         "referer": "https://www.payloadcat.ch/privacy",
         "accept-language": "en-US,en;q=0.9",
     }
+
+
+def test_visit_metadata_rejects_partial_gps_payload() -> None:
+    app, _ = _build_test_app(trusted_proxies=["testclient"])
+    client = TestClient(app, base_url="https://testserver")
+
+    bootstrap_response = client.get("/")
+
+    assert bootstrap_response.status_code == 200
+
+    response = client.post(
+        "/visit-metadata",
+        json={
+            "gps_consent": True,
+            "gps_lat": 35.77959,
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_visit_metadata_ignores_gps_without_explicit_consent() -> None:
@@ -257,6 +284,23 @@ def test_visit_metadata_ignores_gps_without_explicit_consent() -> None:
     assert visit.gps_lat is None
     assert visit.gps_lng is None
     assert visit.consent is False
+
+
+def test_visit_metadata_update_requires_active_session_cookie() -> None:
+    app, _ = _build_test_app(trusted_proxies=["testclient"])
+    client = TestClient(app, base_url="https://testserver")
+
+    response = client.post(
+        "/visit-metadata",
+        json={
+            "gps_consent": True,
+            "gps_lat": 35.77959,
+            "gps_lng": -78.63818,
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "inbox_not_found"
 
 
 def test_openapi_includes_bootstrap_route() -> None:

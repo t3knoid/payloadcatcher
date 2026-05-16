@@ -2,7 +2,14 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 
 import { ApiClientError, apiClient } from '@/api/api-client';
-import type { BootstrapRequest, BootstrapResponse, InboxEventDetail, InboxEventSummary, InboxResponse } from '@/types/api';
+import type {
+  BootstrapRequest,
+  BootstrapResponse,
+  InboxEventDetail,
+  InboxEventSummary,
+  InboxResponse,
+  VisitMetadataUpdateRequest,
+} from '@/types/api';
 
 const DEFAULT_LIMIT = 50;
 
@@ -187,6 +194,10 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   };
 
+  const updateVisitMetadata = async (payload: VisitMetadataUpdateRequest) => {
+    await apiClient.updateVisitMetadata(payload);
+  };
+
   const loadNextPage = async () => {
     if (!activeClsid.value || !inbox.value?.next_token || loadingMore.value) {
       return;
@@ -315,6 +326,7 @@ export const useInboxStore = defineStore('inbox', () => {
     selectedEvent,
     selectedRequestId,
     statusLabel,
+    updateVisitMetadata,
     viewerUrl,
     bootstrapHome,
   };

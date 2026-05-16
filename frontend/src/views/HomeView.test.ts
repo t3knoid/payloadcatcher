@@ -2,9 +2,10 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { bootstrapInbox, getInbox, getInboxEventDetail } = vi.hoisted(() => {
+const { bootstrapInbox, updateVisitMetadata, getInbox, getInboxEventDetail } = vi.hoisted(() => {
   return {
     bootstrapInbox: vi.fn(),
+    updateVisitMetadata: vi.fn(),
     getInbox: vi.fn(),
     getInboxEventDetail: vi.fn(),
   };
@@ -29,6 +30,7 @@ vi.mock('@/api/api-client', () => {
     ApiClientError,
     apiClient: {
       bootstrapInbox,
+      updateVisitMetadata,
       getInbox,
       getInboxEventDetail,
     },
@@ -85,6 +87,7 @@ describe('HomeView privacy notice', () => {
     setActivePinia(createPinia());
     window.localStorage.clear();
     bootstrapInbox.mockReset();
+    updateVisitMetadata.mockReset();
     getInbox.mockReset();
     getInboxEventDetail.mockReset();
     delete (navigator as Navigator & { geolocation?: Geolocation }).geolocation;
@@ -105,6 +108,7 @@ describe('HomeView privacy notice', () => {
 
   it('collects GPS only after explicit opt-in and then bootstraps the inbox', async () => {
     bootstrapInbox.mockResolvedValueOnce(bootstrapPayload);
+    updateVisitMetadata.mockResolvedValueOnce(undefined);
     getInbox.mockResolvedValueOnce(inboxPayload);
     getInboxEventDetail.mockResolvedValueOnce(detailPayload);
 
@@ -142,11 +146,47 @@ describe('HomeView privacy notice', () => {
 
     expect(bootstrapInbox).toHaveBeenCalledWith(
       expect.objectContaining({
-        gpsConsent: true,
-        gpsLat: 35.77959,
-        gpsLng: -78.63818,
+        timezone: expect.any(String),
       }),
     );
+    expect(updateVisitMetadata).toHaveBeenCalledWith({
+      gpsConsent: true,
+      gpsLat: 35.77959,
+      gpsLng: -78.63818,
+    });
     expect(window.localStorage.getItem('payloadcatcher_privacy_notice_ack')).toBe('accepted');
+  });
+
+  it('keeps the geolocation fallback message visible after provisioning continues without GPS', async () => {
+    bootstrapInbox.mockResolvedValueOnce(bootstrapPayload);
+    getInbox.mockResolvedValueOnce(inboxPayload);
+    getInboxEventDetail.mockResolvedValueOnce(detailPayload);
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => {
+          error({
+            code: 1,
+            message: 'Denied',
+            PERMISSION_DENIED: 1,
+            POSITION_UNAVAILABLE: 2,
+            TIMEOUT: 3,
+          });
+        },
+      },
+    });
+
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [createPinia()],
+      },
+    });
+
+    await wrapper.get('#gps-consent-toggle').setValue(true);
+    await wrapper.get('[data-testid="privacy-start-button"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Precise location was unavailable. Continuing with connection and browser metadata only.');
   });
 });

@@ -208,6 +208,13 @@ const routeInboxApi = async (
     });
   });
 
+  await page.route('http://api.payloadcatcher.test/visit-metadata', async (route) => {
+    await route.fulfill({
+      status: 204,
+      body: '',
+    });
+  });
+
   await page.route('http://api.payloadcatcher.test/inbox/*/events/*', async (route) => {
     const url = new URL(route.request().url());
     const pathParts = url.pathname.split('/');
@@ -348,6 +355,14 @@ test.describe('QA-011 inbox UI flows', () => {
     await expect(page.getByText(`Viewer link: ${ROTATED_VIEWER_URL}`)).toBeVisible();
     await expect(page.getByTestId('request-req-101')).toBeVisible();
     expect(api.bootstrapCalls()).toBe(3);
+  });
+
+  test('keeps the GPS fallback message visible when geolocation is unavailable', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Allow one-time precise GPS collection for this device.').check();
+    await page.getByTestId('privacy-start-button').click();
+
+    await expect(page.getByText('Precise location was unavailable. Continuing with connection and browser metadata only.')).toBeVisible();
   });
 
   test('uses the desktop split layout and updates the payload panel when a request is selected', async ({ page }) => {
