@@ -10,6 +10,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.infrastructure.metrics import InMemoryMetrics, get_metrics
+from app.infrastructure.rate_limit import InMemoryRateLimiter, get_request_rate_limiter
 from app.main import create_app
 from app.core.config import Settings, get_settings
 from app.persistence.base import Base
@@ -22,7 +24,11 @@ UUID4_LOWERCASE_PATTERN = re.compile(
 )
 
 
-def _build_test_app(*, trusted_proxies: list[str] | None = None) -> tuple[FastAPI, sessionmaker[Session]]:
+def _build_test_app(
+    *,
+    trusted_proxies: list[str] | None = None,
+    rate_limit_per_minute: int = 60,
+) -> tuple[FastAPI, sessionmaker[Session], InMemoryMetrics]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -32,7 +38,13 @@ def _build_test_app(*, trusted_proxies: list[str] | None = None) -> tuple[FastAP
     testing_session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
     app = create_app()
-    settings = Settings(_env_file=None, trusted_proxies=trusted_proxies or ["127.0.0.1", "::1"])
+    settings = Settings(
+        _env_file=None,
+        trusted_proxies=trusted_proxies or ["127.0.0.1", "::1"],
+        rate_limit_per_minute=rate_limit_per_minute,
+    )
+    limiter = InMemoryRateLimiter(rate_limit_per_minute)
+    metrics = InMemoryMetrics()
 
     def override_db_session() -> Generator[Session, None, None]:
         session = testing_session_factory()
@@ -43,7 +55,9 @@ def _build_test_app(*, trusted_proxies: list[str] | None = None) -> tuple[FastAP
 
     app.dependency_overrides[get_db_session] = override_db_session
     app.dependency_overrides[get_settings] = lambda: settings
-    return app, testing_session_factory
+    app.dependency_overrides[get_request_rate_limiter] = lambda: limiter
+    app.dependency_overrides[get_metrics] = lambda: metrics
+    return app, testing_session_factory, metrics
 
 
 def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) -> None:
@@ -52,7 +66,7 @@ def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) ->
         "app.services.inbox_provisioning.utc_now",
         lambda: first_seen,
     )
-    app, session_factory = _build_test_app()
+    app, session_factory, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get(
@@ -95,7 +109,7 @@ def test_expired_session_rotates_to_new_inbox(monkeypatch) -> None:
         "app.services.inbox_provisioning.utc_now",
         lambda: current_time["value"],
     )
-    app, _ = _build_test_app()
+    app, _, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get("/")
@@ -119,7 +133,7 @@ def test_exact_expiration_boundary_rotates_inbox(monkeypatch) -> None:
         "app.services.inbox_provisioning.utc_now",
         lambda: current_time["value"],
     )
-    app, _ = _build_test_app()
+    app, _, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get("/")
@@ -142,7 +156,7 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
         "app.services.inbox_provisioning.utc_now",
         lambda: first_seen,
     )
-    app, session_factory = _build_test_app(trusted_proxies=["testclient"])
+    app, session_factory, _ = _build_test_app(trusted_proxies=["testclient"])
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get(
@@ -177,10 +191,33 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
 
 
 def test_openapi_includes_bootstrap_route() -> None:
-    app, _ = _build_test_app()
+    app, _, _ = _build_test_app()
     client = TestClient(app)
 
     response = client.get("/openapi.json")
 
     assert response.status_code == 200
     assert "/" in response.json()["paths"]
+
+
+def test_get_root_returns_429_with_retry_hints_when_rate_limited() -> None:
+    app, _, metrics = _build_test_app(rate_limit_per_minute=1)
+    client = TestClient(app, base_url="https://testserver")
+
+    first_response = client.get("/", headers={"x-forwarded-for": "203.0.113.10"})
+    second_response = client.get("/", headers={"x-forwarded-for": "203.0.113.10"})
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert int(second_response.headers["retry-after"]) >= 1
+    assert second_response.json() == {
+        "error": {
+            "code": "rate_limited",
+            "message": "Too many requests",
+            "details": {
+                "retry_after_seconds": int(second_response.headers["retry-after"]),
+            },
+        },
+        "request_id": second_response.headers["x-request-id"],
+    }
+    assert metrics.get("bootstrap.rate_limit_rejected") == 1

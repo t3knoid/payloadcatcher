@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
+from app.api.schemas.common import SafeErrorResponse
 from app.api.schemas.inbox import ProvisionInboxQuery, ProvisionInboxResponse
 from app.services.inbox_provisioning import InboxProvisioningService, get_inbox_provisioning_service
 
@@ -15,6 +16,10 @@ router = APIRouter(tags=["inbox"])
     response_model=ProvisionInboxResponse,
     summary="Provision inbox callback URL",
     description="Create or reuse the active inbox callback URL for the current browser session.",
+    responses={
+        429: {"model": SafeErrorResponse, "description": "Too many requests for the current source IP."},
+        500: {"model": SafeErrorResponse, "description": "Safe internal error envelope."},
+    },
 )
 def provision_inbox(
     request: Request,

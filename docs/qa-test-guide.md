@@ -114,7 +114,7 @@ Purpose: verify provider-agnostic capture behavior and fast acknowledgement sema
 | QA-005-04 | Binary payload is accepted and stored safely | API | implemented | Binary payload does not break parsing or storage. |
 | QA-005-05 | Unknown or expired `clsid` returns a safe `404` error envelope | API | implemented | Response contains safe error details and request correlation. |
 | QA-005-06 | Oversized payload returns `413` with safe error response | API | implemented | Payload size limits are enforced with documented failure semantics. |
-| QA-005-07 | Burst traffic keeps the ack path responsive | API/Load | blocked | Ack latency remains within the configured target under concurrent posts. |
+| QA-005-07 | Burst traffic keeps the ack path responsive | API/Load | ready | Concurrent limiter coverage exists; end-to-end latency validation still needs a dedicated load harness. |
 | QA-005-08 | Invalid `Content-Type` header returns `415` with safe error response | API | implemented | Malformed media type values are rejected with the documented safe envelope. |
 
 ## Suite QA-006 Inbox Viewer, Search, And Pagination
@@ -176,12 +176,12 @@ Purpose: verify resilience controls, retry-safe ingest, and cleanup behavior.
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | Excess traffic returns a safe `429` with retry hints. |
+| QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | `GET /`, `POST /hook/{clsid}`, and viewer routes return safe `429` responses with retry hints when the source-IP budget is exhausted. |
 | QA-010-02 | Retryable failures include `Retry-After` and retry details | API | implemented | `429` responses include documented retry data. |
 | QA-010-02A | Inbox detail requests use a separate rate-limit budget from inbox listing requests | API | implemented | A normal list-plus-detail viewer flow does not exhaust one shared viewer bucket. |
 | QA-010-03 | Deterministic deduplication marks duplicate deliveries safely | API/Unit | blocked | Duplicate events do not overwrite canonical first-capture data. |
 | QA-010-04 | Daily cleanup removes expired inboxes and stale events idempotently | Integration | blocked | Cleanup can be rerun without corrupting data. |
-| QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | blocked | Persistence remains consistent under simultaneous posts. |
+| QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | ready | Limiter concurrency is covered; full persistence concurrency validation still needs a dedicated API-level harness. |
 
 ## Suite QA-011 Frontend Inbox Experience And Responsive Layout
 

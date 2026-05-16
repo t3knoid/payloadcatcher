@@ -11,8 +11,11 @@ from fastapi import Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.errors import ApiError
 from app.api.schemas.inbox import ProvisionInboxQuery
 from app.core.config import Settings, get_settings
+from app.infrastructure.metrics import InMemoryMetrics, get_metrics
+from app.infrastructure.rate_limit import InMemoryRateLimiter, get_request_rate_limiter
 from app.persistence.models import Inbox, VisitMetadata
 from app.persistence.session import get_db_session
 
@@ -31,9 +34,18 @@ class ProvisionInboxResult:
 
 
 class InboxProvisioningService:
-    def __init__(self, session: Session, settings: Settings, clock=None) -> None:
+    def __init__(
+        self,
+        session: Session,
+        settings: Settings,
+        rate_limiter: InMemoryRateLimiter | None = None,
+        metrics: InMemoryMetrics | None = None,
+        clock=None,
+    ) -> None:
         self.session = session
         self.settings = settings
+        self.rate_limiter = rate_limiter
+        self.metrics = metrics
         self.clock = clock or utc_now
         self.logger = logging.getLogger("payloadcatcher.inbox")
 
@@ -43,6 +55,7 @@ class InboxProvisioningService:
             request.client.host if request.client else None,
             request.headers.get("x-forwarded-for"),
         )
+        self.enforce_rate_limit(current_source_ip)
         active_inbox = self._find_active_inbox(
             request.cookies.get(self.settings.session_cookie_name),
             now,
@@ -98,6 +111,25 @@ class InboxProvisioningService:
                 current_source_ip,
             )
         return True
+
+    def enforce_rate_limit(self, source_ip: str) -> None:
+        if self.rate_limiter is None:
+            return
+
+        retry_after = self.rate_limiter.check_and_consume(f"bootstrap:{source_ip}")
+        if retry_after is None:
+            return
+
+        self.logger.warning("Bootstrap rate limit exceeded for source_ip=%s retry_after=%s", source_ip, retry_after)
+        if self.metrics is not None:
+            self.metrics.increment("bootstrap.rate_limit_rejected")
+        raise ApiError(
+            429,
+            "rate_limited",
+            "Too many requests",
+            details={"retry_after_seconds": retry_after},
+            headers={"Retry-After": str(retry_after)},
+        )
 
     def _find_active_inbox(self, clsid: str | None, now: datetime, current_source_ip: str) -> Inbox | None:
         if not clsid:
@@ -199,5 +231,12 @@ class InboxProvisioningService:
 def get_inbox_provisioning_service(
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
+    rate_limiter: InMemoryRateLimiter = Depends(get_request_rate_limiter),
+    metrics: InMemoryMetrics = Depends(get_metrics),
 ) -> InboxProvisioningService:
-    return InboxProvisioningService(session=session, settings=settings)
+    return InboxProvisioningService(
+        session=session,
+        settings=settings,
+        rate_limiter=rate_limiter,
+        metrics=metrics,
+    )

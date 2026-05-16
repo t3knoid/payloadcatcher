@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.infrastructure.metrics import InMemoryMetrics, get_metrics
 from app.infrastructure.rate_limit import InMemoryRateLimiter, get_hook_rate_limiter
 from app.main import create_app
 from app.core.config import Settings, get_settings
@@ -39,6 +40,7 @@ def _build_test_app(
         rate_limit_per_minute=rate_limit_per_minute,
     )
     limiter = InMemoryRateLimiter(rate_limit_per_minute)
+    metrics = InMemoryMetrics()
 
     def override_db_session() -> Generator[Session, None, None]:
         session = testing_session_factory()
@@ -50,11 +52,12 @@ def _build_test_app(
     app.dependency_overrides[get_db_session] = override_db_session
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_hook_rate_limiter] = lambda: limiter
+    app.dependency_overrides[get_metrics] = lambda: metrics
     return app, testing_session_factory
 
 
 def _seed_inbox(session_factory: sessionmaker[Session], clsid: str) -> None:
-    now = datetime(2026, 5, 15, 12, 0, tzinfo=UTC)
+    now = datetime.now(UTC)
     with session_factory() as session:
         session.add(
             Inbox(

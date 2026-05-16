@@ -62,5 +62,9 @@ def _get_cached_rate_limiter(limit_per_minute: int) -> InMemoryRateLimiter:
     return InMemoryRateLimiter(limit_per_minute=limit_per_minute)
 
 
-def get_hook_rate_limiter(settings: Settings = Depends(get_settings)) -> InMemoryRateLimiter:
+def get_request_rate_limiter(settings: Settings = Depends(get_settings)) -> InMemoryRateLimiter:
     return _get_cached_rate_limiter(settings.rate_limit_per_minute)
+
+
+def get_hook_rate_limiter(settings: Settings = Depends(get_settings)) -> InMemoryRateLimiter:
+    return get_request_rate_limiter(settings)

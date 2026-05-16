@@ -30,7 +30,12 @@ Notes:
 - `callback_url` always uses the canonical hook endpoint shape.
 - The response sets a cookie-bound session with secure defaults: `HttpOnly`, `Secure`, and `SameSite=Lax`.
 - Visit metadata capture includes source IP, user-agent, referer, accept-language, and the optional timezone hint.
+- Requests are rate limited per source IP using `RATE_LIMIT_PER_MINUTE`.
 - If source IP changes while the session cookie remains valid, the callback URL stays stable and the source-IP change is treated as a risk signal for logging and abuse analysis.
+
+Errors:
+
+- 429 rate limited, with `Retry-After` and `error.details.retry_after_seconds`
 
 ### 1.2 POST /hook/{clsid}
 
@@ -70,6 +75,7 @@ Notes:
 - Persist and enrich asynchronously after ack.
 - Invalid/expired `clsid` returns 404 with safe error envelope.
 - Callback authentication behavior is mode-driven per inbox (see Section 4).
+- Abuse rejections for rate limits, malformed `Content-Type`, and oversized payloads emit warning logs and increment in-process rejection counters.
 
 Errors:
 
