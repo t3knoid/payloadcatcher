@@ -127,7 +127,7 @@ Notes:
 - Search matches request ID, method, stored source IP, and the visible payload preview text returned by the endpoint.
 - Sort order is stable by `received_at DESC, request_id DESC`.
 - Viewer-facing network identifiers remain masked by default.
-- Public preview text is truncated to the positive `VIEWER_PAYLOAD_PREVIEW_CHARS` limit.
+- Public preview text is truncated to the `VIEWER_PAYLOAD_PREVIEW_CHARS` limit, which must be at least `4`.
 - `limit` values above maximum return 400 with safe error envelope.
 
 Errors:

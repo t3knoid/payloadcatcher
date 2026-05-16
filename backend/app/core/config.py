@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     callback_ttl_hours: int = Field(default=24, alias="CALLBACK_TTL_HOURS")
     rate_limit_per_minute: int = Field(default=60, alias="RATE_LIMIT_PER_MINUTE")
     hook_payload_max_bytes: int = Field(default=1048576, alias="HOOK_PAYLOAD_MAX_BYTES")
-    viewer_payload_preview_chars: int = Field(default=4096, ge=1, alias="VIEWER_PAYLOAD_PREVIEW_CHARS")
+    viewer_payload_preview_chars: int = Field(default=4096, ge=4, alias="VIEWER_PAYLOAD_PREVIEW_CHARS")
     header_allowlist: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["content-type", "user-agent", "referer", "accept-language"],
         alias="HEADER_ALLOWLIST",

@@ -173,7 +173,7 @@ Current behavior:
 - Redacts viewer-facing source IPs to subnet form by default:
   - IPv4 is masked to `/24`
   - IPv6 is masked to `/64`
-- Returns stored payload preview text without reparsing the YAML, and truncates public previews to the positive `VIEWER_PAYLOAD_PREVIEW_CHARS` limit.
+- Returns stored payload preview text without reparsing the YAML, and truncates public previews to the `VIEWER_PAYLOAD_PREVIEW_CHARS` limit, which must be at least `4`.
 
 Request details:
 

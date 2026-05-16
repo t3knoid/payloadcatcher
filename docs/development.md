@@ -121,7 +121,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 
 Never commit secrets in local env files.
 
-`VIEWER_PAYLOAD_PREVIEW_CHARS` controls the public inbox preview length and must be a positive integer.
+`VIEWER_PAYLOAD_PREVIEW_CHARS` controls the public inbox preview length and must be an integer greater than or equal to `4`.
 
 ## 6. Backend Setup and Run
 

@@ -131,6 +131,24 @@ def test_mask_source_ip_and_truncate_preview() -> None:
     assert service.truncate_payload_yaml("1234567890ABC") == "1234567..."
 
 
+@pytest.mark.parametrize(
+    ("preview_chars", "expected_preview"),
+    [
+        (4, "a..."),
+        (5, "ab..."),
+    ],
+)
+def test_truncate_payload_yaml_respects_small_valid_preview_limits(
+    preview_chars: int,
+    expected_preview: str,
+) -> None:
+    session = _build_session()
+    settings = Settings(_env_file=None, viewer_payload_preview_chars=preview_chars)
+    service = InboxViewerService(session=session, settings=settings, rate_limiter=None)
+
+    assert service.truncate_payload_yaml("abcdef") == expected_preview
+
+
 def test_get_inbox_view_search_uses_visible_preview_text() -> None:
     session = _build_session()
     clsid = "550e8400-e29b-41d4-a716-446655440111"
