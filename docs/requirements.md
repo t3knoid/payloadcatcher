@@ -100,7 +100,7 @@ Default settings are configured through `.env` values, including:
 - `RATE_LIMIT_PER_MINUTE`
 - `HOOK_PAYLOAD_MAX_BYTES`
 - `HEADER_ALLOWLIST`
-- `GEOIP_ENABLED`
+- `LOCALITY_HEADER_NAME`
 - `GPS_COLLECTION_ENABLED`
 - `COOKIE_SECURE`, `COOKIE_SAMESITE`, `COOKIE_MAX_AGE`
 - `PORT` (default `8080` for site serving)
@@ -137,8 +137,8 @@ Minimum requirements:
 
 1. Keep UI complexity minimal and task-focused.
 2. Provide a top header containing:
-   - A compact menu entry point.
    - A recognizable app logo.
+   - A readable status indicator when the current view exposes one.
 3. Present the callback URL as a clickable control.
 4. When the callback URL is clicked, copy the URL to the clipboard so users can paste it immediately.
 5. Main inbox view uses a two-column layout:
