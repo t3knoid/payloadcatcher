@@ -320,19 +320,14 @@ test.describe('QA-011 inbox UI flows', () => {
 
     expect(overflowState.scrollWidth).toBeLessThanOrEqual(overflowState.clientWidth);
 
-    const menu = page.getByRole('button', { name: 'Open navigation' });
     const logo = page.getByAltText('PayloadCatcher');
     const wordmark = page.locator('.shell__wordmark');
-    const menuBox = await menu.boundingBox();
     const logoBox = await logo.boundingBox();
     const wordmarkBox = await wordmark.boundingBox();
 
-    expect(menuBox).not.toBeNull();
     expect(logoBox).not.toBeNull();
     expect(wordmarkBox).not.toBeNull();
-    expect(logoBox!.x).toBeGreaterThan(menuBox!.x);
-    expect(wordmarkBox!.x).toBeGreaterThan(logoBox!.x);
-    expect(Math.abs(menuBox!.y - logoBox!.y)).toBeLessThan(40);
+    expect(logoBox!.x).toBeGreaterThan(wordmarkBox!.x);
     expect(Math.abs(logoBox!.y - wordmarkBox!.y)).toBeLessThan(40);
   });
 

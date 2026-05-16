@@ -58,27 +58,7 @@ a {
 .shell__brand-block {
   display: flex;
   align-items: center;
-  gap: 0.2rem;
-}
-
-.shell__menu {
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.28rem;
-  width: 3rem;
-  height: 3rem;
-  padding: 0.85rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.shell__menu span {
-  width: 100%;
-  height: 2px;
-  background: var(--ink);
-  border-radius: 999px;
+  gap: 0;
 }
 
 .shell__eyebrow {
@@ -92,17 +72,18 @@ a {
 .shell__brand {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  margin: 0 0 0 -0.45rem;
+  gap: calc(0.35rem - 10px);
+  margin: 0;
 }
 
 .shell__logo {
   display: block;
-  width: clamp(5.5rem, 8vw, 7rem);
+  width: clamp(2.75rem, 4vw, 3.5rem);
   max-width: 100%;
   height: auto;
   opacity: 0.78;
-  margin-top: -2.25rem;
+  margin-left: -5px;
+  margin-top: -1.1rem;
 }
 
 .shell__wordmark {
@@ -360,14 +341,14 @@ a {
   .shell__brand-block {
     flex-direction: row;
     align-items: center;
-    gap: 0.53rem;
+    gap: 0;
   }
 
   .shell__brand {
     flex-direction: row;
     align-items: center;
-    gap: 0.34rem;
-    margin: 0 0 0 -0.2rem;
+    gap: calc(0.34rem - 10px);
+    margin: 0;
   }
 
   .shell__status {
@@ -375,8 +356,9 @@ a {
   }
 
   .shell__logo {
-    width: clamp(4.75rem, 19.6vw, 6rem);
-    margin-top: -1.22rem;
+    width: clamp(2.4rem, 10vw, 3rem);
+    margin-left: -5px;
+    margin-top: calc(-0.65rem - 13px);
   }
 
   .shell__wordmark {
