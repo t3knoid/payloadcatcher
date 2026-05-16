@@ -191,6 +191,7 @@ const routeInboxApi = async (
 ) => {
   let inboxCalls = 0;
   let bootstrapCalls = 0;
+  const bootstrapRoutePattern = /^http:\/\/api\.payloadcatcher\.test\/(?:\?.*)?$/;
 
   const bootstrapSequence = options?.bootstrapSequence ?? [bootstrapPayload];
   const inboxByClsid: Record<string, typeof inboxFirstPage | typeof rotatedInboxFirstPage> = {
@@ -198,7 +199,7 @@ const routeInboxApi = async (
     [ROTATED_CLSID]: rotatedInboxFirstPage,
   };
 
-  await page.route('http://api.payloadcatcher.test/', async (route) => {
+  await page.route(bootstrapRoutePattern, async (route) => {
     const payload = bootstrapSequence[Math.min(bootstrapCalls, bootstrapSequence.length - 1)];
     bootstrapCalls += 1;
 
@@ -348,7 +349,7 @@ test.describe('QA-011 inbox UI flows', () => {
   test('provisions callback URLs on home and keeps reuse or rotation aligned with bootstrap responses', async ({ page, context }) => {
     test.skip(test.info().project.name !== 'chromium', 'Provisioning lifecycle assertions run in the desktop Chromium project only.');
 
-    await page.unroute('http://api.payloadcatcher.test/');
+    await page.unroute(/^http:\/\/api\.payloadcatcher\.test\/(?:\?.*)?$/);
     await page.unroute('http://api.payloadcatcher.test/inbox/*');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const api = await routeInboxApi(page, {
