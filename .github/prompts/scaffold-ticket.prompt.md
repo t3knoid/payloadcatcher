@@ -36,6 +36,9 @@ The issue must preserve strict architecture boundaries and provider-agnostic web
 
 ## GitHub Issue Creation Requirements
 
+- Before creating a new issue, search for an existing open GitHub issue with the same or materially similar title using the `gh` CLI.
+- Prefer a non-interactive duplicate check such as `gh issue list --search <title>` or an equivalent `gh` search command scoped to the current repository.
+- If a matching open issue already exists, report that issue to the user and do not create a duplicate unless the user explicitly asks for a separate issue.
 - After drafting the issue title and body, create the issue in the current repository with a non-interactive `gh issue create` command.
 - Use the `gh` CLI through the terminal tool; do not stop after only drafting the issue text when issue creation is possible.
 - Prefer a non-interactive form such as `gh issue create --title <title> --body-file <file>` or an equivalent safe non-interactive variant.
