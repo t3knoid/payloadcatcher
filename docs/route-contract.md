@@ -64,7 +64,7 @@ Notes:
 Errors:
 
 - 404 active inbox or visit metadata not found for session
-- 422 malformed GPS body
+- 422 safe validation error envelope for malformed GPS body
 - 429 rate limited
 
 ### 1.2 POST /hook/{clsid}
@@ -169,6 +169,7 @@ Notes:
 Errors:
 
 - 400 invalid clsid, cursor, or limit
+- 422 safe validation error envelope for query type or shape validation failures
 - 404 unknown/expired inbox
 - 429 rate limited
 
@@ -239,6 +240,17 @@ Required fields:
 - `error.code`
 - `error.message`
 - `request_id`
+
+Validation failures:
+
+- `422` responses use `error.code=validation_error`.
+- Validation details live in `error.details.errors`.
+- Each validation entry contains only `loc`, `msg`, and `type`.
+
+Default framework HTTP failures:
+
+- Unknown routes return `404` with the standard error envelope.
+- Unsupported methods return `405` with the standard error envelope.
 
 ## 3. Minimal Table Schema
 

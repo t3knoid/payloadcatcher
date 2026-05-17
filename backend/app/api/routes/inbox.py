@@ -18,6 +18,7 @@ router = APIRouter(tags=["inbox"])
     description="Return a public bearer-style inbox event listing with safe previews, masking, search, and pagination.",
     responses={
         400: {"model": SafeErrorResponse, "description": "Malformed clsid, cursor, or pagination input."},
+        422: {"model": SafeErrorResponse, "description": "Validation failed for inbox query parameters."},
         404: {"model": SafeErrorResponse, "description": "Inbox does not exist or has expired."},
         429: {"model": SafeErrorResponse, "description": "Too many requests for the current source IP."},
         500: {"model": SafeErrorResponse, "description": "Safe internal error envelope."},

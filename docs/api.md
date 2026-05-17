@@ -110,7 +110,7 @@ Response details:
 Error responses:
 
 - `404` when the active inbox or visit metadata row is missing for the session
-- `422` when the GPS payload is malformed
+- `422` safe error envelope when the GPS payload fails validation
 - `429` when the source IP exceeds `RATE_LIMIT_PER_MINUTE`
 - `500` safe error envelope for unexpected failures
 
@@ -262,6 +262,7 @@ Response shape:
 Error responses:
 
 - `400` when `clsid`, `cursor`, or `limit` is invalid
+- `422` safe error envelope when `cursor`, `limit`, or other query parameters fail type validation
 - `404` when the inbox is missing or expired
 - `429` when the source IP exceeds `RATE_LIMIT_PER_MINUTE`
 - `500` safe error envelope for unexpected failures
@@ -338,6 +339,8 @@ Non-2xx responses use a safe error envelope with:
 Current scaffold behavior:
 
 - Unhandled backend failures return a safe `500` response body with `error.code`, `error.message`, and `request_id`.
+- FastAPI validation failures return `422` with `error.code=validation_error` and sanitized `error.details.errors` entries containing only `loc`, `msg`, and `type`.
+- Default framework HTTP failures such as unknown routes and unsupported methods return the same safe envelope shape with status-appropriate codes like `not_found` and `method_not_allowed`.
 - Error responses also include the `X-Request-ID` response header for correlation.
 
 Retryable responses such as `429` and `503` include:

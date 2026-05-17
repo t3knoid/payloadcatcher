@@ -44,6 +44,7 @@ def provision_inbox(
     summary="Update visit metadata",
     description="Persist consented visit metadata that should not be transported in URL parameters.",
     responses={
+        422: {"model": SafeErrorResponse, "description": "Validation failed for the visit metadata payload."},
         404: {"model": SafeErrorResponse, "description": "Active inbox or visit metadata not found for session."},
         429: {"model": SafeErrorResponse, "description": "Too many requests for the current source IP."},
         500: {"model": SafeErrorResponse, "description": "Safe internal error envelope."},

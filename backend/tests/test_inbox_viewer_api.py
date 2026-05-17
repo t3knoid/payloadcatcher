@@ -222,6 +222,33 @@ def test_get_inbox_returns_400_for_invalid_cursor() -> None:
     }
 
 
+def test_get_inbox_returns_422_for_non_integer_limit_query() -> None:
+    clsid = "550e8400-e29b-41d4-a716-446655440110"
+    app, session_factory = _build_test_app()
+    _seed_inbox_with_events(session_factory, clsid)
+    client = TestClient(app)
+
+    response = client.get(f"/inbox/{clsid}?limit=abc")
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "message": "Request validation failed",
+            "details": {
+                "errors": [
+                    {
+                        "loc": ["query", "limit"],
+                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                        "type": "int_parsing",
+                    }
+                ],
+            },
+        },
+        "request_id": response.headers["x-request-id"],
+    }
+
+
 def test_get_inbox_returns_429_with_retry_hints_when_rate_limited() -> None:
     clsid = "550e8400-e29b-41d4-a716-446655440105"
     app, session_factory = _build_test_app(rate_limit_per_minute=1)

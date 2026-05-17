@@ -262,6 +262,22 @@ def test_visit_metadata_rejects_partial_gps_payload() -> None:
     )
 
     assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "message": "Request validation failed",
+            "details": {
+                "errors": [
+                    {
+                        "loc": ["body"],
+                        "msg": "Value error, gps_lat and gps_lng must be provided together",
+                        "type": "value_error",
+                    }
+                ],
+            },
+        },
+        "request_id": response.headers["x-request-id"],
+    }
 
 
 def test_visit_metadata_ignores_gps_without_explicit_consent() -> None:

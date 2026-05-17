@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from typing import Any, cast
 
-from app.api.errors import ApiError, api_error_handler
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.api.errors import ApiError, api_error_handler, http_exception_handler, validation_exception_handler
 from app.api.routes.bootstrap import router as bootstrap_router
 from app.api.routes.health import router as health_router
 from app.api.routes.hook import router as hook_router
@@ -22,7 +26,9 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
         swagger_ui_parameters={"displayRequestDuration": True},
     )
-    app.add_exception_handler(ApiError, api_error_handler)
+    app.add_exception_handler(ApiError, cast(Any, api_error_handler))
+    app.add_exception_handler(StarletteHTTPException, cast(Any, http_exception_handler))
+    app.add_exception_handler(RequestValidationError, cast(Any, validation_exception_handler))
 
     app.add_middleware(
         NetworkAwareCORSMiddleware,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
@@ -151,6 +151,69 @@ def test_unhandled_exception_returns_safe_error_envelope_and_request_id() -> Non
         "error": {
             "code": "internal_error",
             "message": "Internal Server Error",
+        },
+        "request_id": response.headers["x-request-id"],
+    }
+
+
+def test_unknown_route_returns_safe_404_error_envelope_and_request_id() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/missing-route")
+
+    assert response.status_code == 404
+    assert response.headers["x-request-id"]
+    assert response.json() == {
+        "error": {
+            "code": "not_found",
+            "message": "Not Found",
+        },
+        "request_id": response.headers["x-request-id"],
+    }
+
+
+def test_method_not_allowed_returns_safe_405_error_envelope_and_request_id() -> None:
+    client = TestClient(create_app())
+
+    response = client.post("/healthz")
+
+    assert response.status_code == 405
+    assert response.headers["x-request-id"]
+    assert response.json() == {
+        "error": {
+            "code": "method_not_allowed",
+            "message": "Method Not Allowed",
+        },
+        "request_id": response.headers["x-request-id"],
+    }
+
+
+def test_http_exception_returns_retry_hints_for_503_responses() -> None:
+    app = create_app()
+    router = APIRouter()
+
+    @router.get("/maintenance")
+    async def maintenance() -> dict[str, str]:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable",
+            headers={"Retry-After": "30"},
+        )
+
+    app.include_router(router)
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.get("/maintenance")
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "30"
+    assert response.json() == {
+        "error": {
+            "code": "service_unavailable",
+            "message": "Service temporarily unavailable",
+            "details": {
+                "retry_after_seconds": 30,
+            },
         },
         "request_id": response.headers["x-request-id"],
     }
