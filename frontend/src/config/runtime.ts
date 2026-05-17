@@ -6,15 +6,50 @@ const normalizeBaseUrl = (value: string | undefined): string => {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 };
 
-const inferLocalApiBaseUrl = (locationValue: Location): string => {
-  const isLocalHost = locationValue.hostname === '127.0.0.1' || locationValue.hostname === 'localhost';
-  const isVitePort = locationValue.port === '5173' || locationValue.port === '4173';
+const isLoopbackHost = (hostname: string): boolean => {
+  return hostname === '127.0.0.1' || hostname === 'localhost';
+};
 
-  if (!isLocalHost || !isVitePort) {
+const isVitePort = (port: string): boolean => {
+  return port === '5173' || port === '4173';
+};
+
+const rebaseLoopbackApiBaseUrl = (envConfig: string, locationValue: Location): string => {
+  if (!envConfig || isLoopbackHost(locationValue.hostname) || !isVitePort(locationValue.port)) {
+    return envConfig;
+  }
+
+  try {
+    const envUrl = new URL(envConfig);
+    if (!isLoopbackHost(envUrl.hostname)) {
+      return envConfig;
+    }
+
+    envUrl.hostname = locationValue.hostname;
+    return envUrl.toString().replace(/\/$/, '');
+  } catch {
+    return envConfig;
+  }
+};
+
+const inferLocalApiBaseUrl = (locationValue: Location): string => {
+  const isLocalHost = isLoopbackHost(locationValue.hostname);
+  const isLocalVitePort = isVitePort(locationValue.port);
+
+  if (!isLocalHost || !isLocalVitePort) {
     return '';
   }
 
   return `${locationValue.protocol}//${locationValue.hostname}:8000`;
+};
+
+const resolveApiBaseUrl = ({ envConfig, locationValue }: { envConfig: string; locationValue: Location }): string => {
+  const rebasedEnvConfig = rebaseLoopbackApiBaseUrl(envConfig, locationValue);
+  if (rebasedEnvConfig) {
+    return rebasedEnvConfig;
+  }
+
+  return inferLocalApiBaseUrl(locationValue);
 };
 
 export const getApiBaseUrl = (): string => {
@@ -24,11 +59,10 @@ export const getApiBaseUrl = (): string => {
   }
 
   const envConfig = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
-  if (envConfig) {
-    return envConfig;
-  }
-
-  return inferLocalApiBaseUrl(window.location);
+  return resolveApiBaseUrl({
+    envConfig,
+    locationValue: window.location,
+  });
 };
 
-export { inferLocalApiBaseUrl, normalizeBaseUrl };
+export { inferLocalApiBaseUrl, normalizeBaseUrl, resolveApiBaseUrl };

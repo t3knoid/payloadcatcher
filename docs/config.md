@@ -34,14 +34,14 @@ Use the values in this reference together with [install.md](install.md) and [dev
 
 | Config Name | Default Value | Expected Value Type | Description |
 | --- | --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://127.0.0.1:8000` | `URL string` | API origin used by the frontend client for bootstrap, inbox listing, and event detail requests. |
+| `VITE_API_BASE_URL` | `http://127.0.0.1:8000` | `URL string` | API origin used by the frontend client for bootstrap, inbox listing, and event detail requests. When the frontend is served from a Vite machine-IP host, loopback values are rebased to the current host so local mobile testing can still reach the backend port. |
 
 ## Notes
 
 | Topic | Detail |
 | --- | --- |
 | Local loopback access | `http://127.0.0.1:5173` and `http://localhost:5173` are covered by the explicit origin list and loopback regex. |
-| Local machine-IP access | When the frontend is opened on the same machine by IP, keep `VITE_API_BASE_URL` aligned with the reachable backend origin and allow the frontend origin with `CORS_ALLOW_ORIGIN_NETWORK`. |
+| Local machine-IP access | When the frontend is opened on the same machine by IP, the frontend rebases loopback `VITE_API_BASE_URL` values to the current host for Vite machine-IP access. Keep the backend reachable on that host and allow the frontend origin with `CORS_ALLOW_ORIGIN_NETWORK`. |
 | Cross-device development | When another device loads the frontend over the network, bind the backend to `0.0.0.0`, use a reachable machine-IP API base URL, and allow the frontend origin network explicitly. |
 | Visit locality capture | `LOCALITY_HEADER_NAME` is read only from clients listed in `TRUSTED_PROXIES`; use it with a reverse proxy that injects sanitized IP-geo locality data. |
 | Example files | The tables above are seeded from [backend/.env.example](../backend/.env.example) and [frontend/.env.example](../frontend/.env.example). |
