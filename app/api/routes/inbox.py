@@ -8,11 +8,11 @@ from app.api.schemas.common import SafeErrorResponse
 from app.api.schemas.inbox import InboxEventDetailResponse, InboxViewerQuery, InboxViewerResponse
 from app.services.inbox_viewer import InboxViewerService, get_inbox_viewer_service
 
-router = APIRouter(tags=["inbox"])
+router = APIRouter(prefix="/api", tags=["inbox"])
 
 
 @router.get(
-    "/inbox/{clsid}",
+    "/inboxes/{clsid}",
     response_model=InboxViewerResponse,
     summary="List inbox events",
     description="Return a public bearer-style inbox event listing with safe previews, masking, search, and pagination.",
@@ -34,7 +34,7 @@ def get_inbox_view(
 
 
 @router.get(
-    "/inbox/{clsid}/events/{request_id}",
+    "/inboxes/{clsid}/events/{request_id}",
     response_model=InboxEventDetailResponse,
     summary="Get inbox event detail",
     description="Return the full safe payload rendering and captured request metadata for a selected inbox event.",

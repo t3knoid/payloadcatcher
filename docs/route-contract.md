@@ -4,6 +4,18 @@
 
 ### 1.1 GET /
 
+Purpose: Serve the frontend application shell for the home route.
+
+Response:
+
+- 200 HTML document for the SPA entrypoint
+
+Notes:
+
+- The browser provisions callback URLs through `GET /api/bootstrap` after the SPA loads.
+
+### 1.1A GET /api/bootstrap
+
 Purpose: Provision or return the active callback URL for this visitor context.
 
 Query params:
@@ -33,13 +45,13 @@ Notes:
 - Requests are rate limited per source IP using `RATE_LIMIT_PER_MINUTE`.
 - If source IP changes while the session cookie remains valid, the callback URL stays stable and the source-IP change is treated as a risk signal for logging and abuse analysis.
 - Locality capture uses the configured `LOCALITY_HEADER_NAME` only when the request comes through a trusted proxy.
-- GPS coordinates must not be stored unless the caller explicitly opts in through `POST /visit-metadata`.
+- GPS coordinates must not be stored unless the caller explicitly opts in through `POST /api/visit-metadata`.
 
 Errors:
 
 - 429 rate limited, with `Retry-After` and `error.details.retry_after_seconds`
 
-### 1.1A POST /visit-metadata
+### 1.1B POST /api/visit-metadata
 
 Purpose: Persist consented precise GPS metadata for the active session without placing coordinates in the URL.
 
@@ -58,7 +70,7 @@ Notes:
 - The route uses the active session cookie to locate the current inbox visit.
 - The route updates the most recent `visit_metadata` row for that active inbox.
 - GPS coordinates remain out of provisioning URLs and query strings.
-- The route uses an independent rate-limit scope from `GET /` so one consented metadata update does not exhaust the bootstrap budget for the same visit.
+- The route uses an independent rate-limit scope from `GET /api/bootstrap` so one consented metadata update does not exhaust the bootstrap budget for the same visit.
 - Failure to update GPS metadata does not invalidate a successfully provisioned inbox.
 
 Errors:
@@ -120,6 +132,18 @@ Errors:
 
 ### 1.3 GET /inbox/{clsid}
 
+Purpose: Serve the frontend application shell for an inbox viewer route.
+
+Response:
+
+- 200 HTML document for the SPA entrypoint
+
+Notes:
+
+- The browser loads viewer data through `GET /api/inboxes/{clsid}` after the SPA loads.
+
+### 1.3A GET /api/inboxes/{clsid}
+
 Purpose: Return viewer data for an inbox.
 
 Path params:
@@ -177,7 +201,7 @@ Retry behavior:
 
 - 429 and 503 responses include `Retry-After` header and `error.details.retry_after_seconds`.
 
-### 1.4 GET /inbox/{clsid}/events/{request_id}
+### 1.4 GET /api/inboxes/{clsid}/events/{request_id}
 
 Purpose: Return the full payload view and selected request metadata for one inbox event.
 

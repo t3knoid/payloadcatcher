@@ -68,6 +68,19 @@ describe('resolveApiBaseUrl', () => {
     ).toBe('http://192.168.10.69:8000');
   });
 
+  it('ignores build-time env config outside Vite runtime so production uses same-origin api routes', () => {
+    expect(
+      resolveApiBaseUrl({
+        envConfig: 'http://192.168.10.69:8000',
+        locationValue: {
+          protocol: 'http:',
+          hostname: '127.0.0.1',
+          port: '8000',
+        } as Location,
+      }),
+    ).toBe('');
+  });
+
   it('rebases a loopback env config to the current Vite host for machine-ip access', () => {
     expect(
       resolveApiBaseUrl({

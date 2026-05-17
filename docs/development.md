@@ -57,18 +57,17 @@ Use this layout for local development:
 
 ```text
 payloadcatcher/
-  backend/
-    app/
-      api/
-      core/
-      middleware/
-      services/
-      infrastructure/
-      persistence/
-    alembic/
-    requirements files
-    Dockerfile
-    .env.example
+  app/
+    api/
+    core/
+    middleware/
+    services/
+    infrastructure/
+    persistence/
+  alembic/
+  requirements files
+  Dockerfile
+  .env.example
   frontend/
     src/
     package.json
@@ -87,7 +86,7 @@ Backend local env example:
 
 ```env
 ENV=development
-BASE_URL=https://payloadcat.ch
+BASE_URL=http://127.0.0.1:8000
 PORT=8080
 CALLBACK_TTL_HOURS=24
 CLEANUP_INTERVAL_HOURS=24
@@ -113,8 +112,11 @@ Cookie note:
 - If you intentionally run the backend over plain local HTTP for browser testing, set `COOKIE_SECURE=false` in your uncommitted local `.env` override.
 - Keep `COOKIE_SECURE=true` for shared, preview, and production-like environments.
 
+Set `BASE_URL` to the browser-visible origin that should appear in generated callback and viewer URLs. For a direct local FastAPI run, that is typically `http://127.0.0.1:8000` or `http://localhost:8000`. If you access the app through a machine IP or a reverse proxy, set `BASE_URL` to that external origin instead.
+
 The default site-facing serving port is `8080`. Local backend API development and Swagger access continue to use port `8000` unless your local stack intentionally consolidates them.
 The example `DATABASE_URL` uses `localhost` for native local development. When running through Docker Compose, the API container uses the `db` service hostname instead.
+Backend settings load from `.env` at the repository root regardless of where you launch Uvicorn from, so `BASE_URL` and related runtime settings continue to come from the project env file.
 
 Frontend local env example:
 
@@ -122,10 +124,10 @@ Frontend local env example:
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-The frontend accepts the API base URL from `frontend/.env`, `frontend/.env.local`, or a runtime-injected `window.__PAYLOADCATCHER_CONFIG__` object. If no frontend env file is present while Vite is serving the app from `127.0.0.1:5173`, `localhost:5173`, `127.0.0.1:4173`, or `localhost:4173`, the frontend falls back to the same host on port `8000` for local API requests. When Vite is opened from a machine IP for local mobile testing, loopback `VITE_API_BASE_URL` values are rebased to the current host so the browser does not keep calling its own `127.0.0.1`. If your backend uses a different origin, copy `frontend/.env.example` and set `VITE_API_BASE_URL` explicitly.
+Vite reads `VITE_API_BASE_URL` from the repository root `.env` and `.env.local`, so local development only needs one env file for both backend and frontend settings. A runtime-injected `window.__PAYLOADCATCHER_CONFIG__` object can still override the browser API origin when needed. If no `VITE_API_BASE_URL` is present while Vite is serving the app from `127.0.0.1:5173`, `localhost:5173`, `127.0.0.1:4173`, or `localhost:4173`, the frontend falls back to the same host on port `8000` for local API requests. When Vite is opened from a machine IP for local mobile testing, loopback `VITE_API_BASE_URL` values are rebased to the current host so the browser does not keep calling its own `127.0.0.1`. If your backend uses a different origin, set `VITE_API_BASE_URL` in the root `.env` accordingly. Vite is a development server only; production and production-like single-origin runs serve the built frontend through FastAPI after `npm run build`.
 Leave `CORS_ALLOW_ORIGIN_NETWORK` empty unless you open the frontend from a private-network machine IP. When needed, set it to the smallest practical CIDR, such as `192.168.0.22/32` for one host or `192.168.0.0/24` for a subnet. If you open the frontend from another device on the network, set `VITE_API_BASE_URL` to the machine IP on port `8000` and bind the backend to `0.0.0.0`.
 `LOCALITY_HEADER_NAME` should match a sanitized reverse-proxy IP-geo header only when that proxy is also listed in `TRUSTED_PROXIES`. Leave it empty to disable locality capture.
-The home route shows a privacy notice before first-visit provisioning. If the user opts in to precise location access, the frontend provisions the inbox first and then sends GPS coordinates through `POST /visit-metadata` only when the browser returns them. The follow-up metadata update is best effort and uses its own rate-limit scope, so a consented GPS update does not consume the bootstrap budget for the same visit.
+The home route shows a privacy notice before first-visit provisioning. If the user opts in to precise location access, the frontend provisions the inbox first and then sends GPS coordinates through `POST /api/visit-metadata` only when the browser returns them. The follow-up metadata update is best effort and uses its own rate-limit scope, so a consented GPS update does not consume the bootstrap budget for the same visit.
 
 Never commit secrets in local env files.
 
@@ -136,7 +138,6 @@ Never commit secrets in local env files.
 From repository root:
 
 ```bash
-cd backend
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -189,7 +190,7 @@ alembic downgrade -1
 
 Migration strategy notes:
 
-- Keep ORM models under `backend/app/persistence/` and keep Alembic revisions aligned to the shared SQLAlchemy metadata.
+- Keep ORM models under `app/persistence/` and keep Alembic revisions aligned to the shared SQLAlchemy metadata.
 - Review autogenerated revisions before applying them, especially constraints, index definitions, and byte-safe payload column types.
 - Prefer additive, reversible migrations and keep rollback steps valid for local and deployment use.
 - The initial schema provisions `inboxes`, `visit_metadata`, and `webhook_events` with the indexed query paths defined in `docs/route-contract.md`.
@@ -214,8 +215,9 @@ API documentation endpoints during local development:
 Swagger is the required interactive API documentation surface for local development. Keep FastAPI route metadata, request models, response models, and status code declarations accurate so the generated docs stay aligned with `docs/api.md`.
 
 The initial backend scaffold exposes the operational health route at `<http://127.0.0.1:8000/healthz>` in addition to Swagger and OpenAPI endpoints.
-The backend also exposes `GET /` for cookie-backed inbox provisioning and callback URL reuse after the frontend privacy notice is acknowledged.
-The backend exposes `POST /visit-metadata` for consented precise GPS updates that must not travel in query parameters.
+The backend serves the built SPA at `GET /`, `GET /privacy`, and `GET /inbox/{clsid}` after `npm run build` has populated `frontend/dist`.
+The backend exposes `GET /api/bootstrap` for cookie-backed inbox provisioning and callback URL reuse after the frontend privacy notice is acknowledged.
+The backend exposes `POST /api/visit-metadata` for consented precise GPS updates that must not travel in query parameters.
 The hook ingress path `POST /hook/{clsid}` accepts provider-agnostic payloads, acknowledges quickly, and persists in a background task.
 The viewer path `GET /inbox/{clsid}` exposes bearer-style inbox browsing with safe previews, search, pagination, and masked network identifiers.
 
@@ -263,10 +265,10 @@ The scaffold uses Vue Router history mode for `/` and `/inbox/{clsid}` and uses 
 Optional Docker Compose workflow:
 
 ```bash
-docker compose up --build frontend api db
+docker compose up --build api db
 ```
 
-The Compose frontend service binds Vite to `0.0.0.0:5173` and targets the backend API at `http://127.0.0.1:8000` for browser traffic on the host machine.
+Docker Compose builds the frontend assets into the API image and serves the site through FastAPI on `http://127.0.0.1:8000`. There is no separate Vite service in the Compose workflow.
 
 ## 8. Run the Site from Source
 
@@ -277,6 +279,8 @@ The Compose frontend service binds Vite to `0.0.0.0:5173` and targets the backen
 5. Open <http://127.0.0.1:8000/docs> and confirm Swagger UI loads.
 6. Verify callback generation, request list rendering, payload panel selection, and inbox route loading.
 7. Confirm `<http://127.0.0.1:8000/healthz>` returns `{"status": "ok"}`.
+
+When using Docker Compose instead of separate source processes, open <http://127.0.0.1:8000> because FastAPI serves the compiled frontend in that workflow as well.
 
 ## 9. Debugging in VS Code
 
@@ -299,9 +303,9 @@ Create .vscode/launch.json with backend and frontend profiles.
         "--port",
         "8000"
       ],
-      "cwd": "${workspaceFolder}/backend",
+      "cwd": "${workspaceFolder}",
       "justMyCode": true,
-      "envFile": "${workspaceFolder}/backend/.env"
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "name": "Frontend: Chrome",
@@ -329,35 +333,30 @@ Use [qa-test-guide.md](qa-test-guide.md) as the source of truth for QA suite def
 Backend tests:
 
 ```bash
-cd backend
 pytest
 ```
 
 Bootstrap endpoint regression:
 
 ```bash
-cd backend
 pytest tests/test_inbox_service.py tests/test_bootstrap_api.py
 ```
 
 Hook ingestion regression:
 
 ```bash
-cd backend
 pytest tests/test_webhook_service.py tests/test_hook_api.py
 ```
 
 Inbox viewer regression:
 
 ```bash
-cd backend
 pytest tests/test_inbox_viewer_service.py tests/test_inbox_viewer_api.py
 ```
 
 Migration verification:
 
 ```bash
-cd backend
 pytest tests/test_persistence_models.py tests/test_migrations.py
 ```
 

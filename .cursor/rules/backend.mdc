@@ -2,8 +2,8 @@
 description: "Backend PayloadCatcher rules for FastAPI routes, services, persistence, infrastructure boundaries, storage safety, and backend tests."
 alwaysApply: false
 globs:
-  - "backend/app/**/*.py"
-  - "backend/tests/**/*.py"
+  - "app/**/*.py"
+  - "tests/**/*.py"
 ---
 
 # PayloadCatcher - Backend Addendum
@@ -24,7 +24,7 @@ Global product, security, privacy, and documentation rules remain governed by re
   - Routers: request parsing, validation, auth enforcement, and delegation only.
   - Services: business logic, lifecycle rules, deduplication, routing, retention, and orchestration.
   - Persistence and repositories: database access only.
-  - Infrastructure under `backend/app/infrastructure`: external I/O, queues, network operations, storage adapters, subprocess wrappers, and other OS-level interactions.
+  - Infrastructure under `app/infrastructure`: external I/O, queues, network operations, storage adapters, subprocess wrappers, and other OS-level interactions.
 - OS abstraction:
   - All OS-level operations must go through infrastructure interfaces or wrappers.
   - Services and routers must not call `os`, `subprocess`, or low-level system libraries directly when an infrastructure boundary is appropriate.

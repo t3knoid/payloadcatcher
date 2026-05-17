@@ -131,7 +131,7 @@ def test_get_inbox_returns_masked_sorted_paginated_events() -> None:
     client = TestClient(app)
 
     response = client.get(
-        f"/inbox/{clsid}?limit=2",
+        f"/api/inboxes/{clsid}?limit=2",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
 
@@ -153,11 +153,11 @@ def test_get_inbox_uses_cursor_for_next_page() -> None:
     _seed_inbox_with_events(session_factory, clsid)
     client = TestClient(app)
 
-    first_page = client.get(f"/inbox/{clsid}?limit=2")
+    first_page = client.get(f"/api/inboxes/{clsid}?limit=2")
 
     assert first_page.status_code == 200
     next_token = first_page.json()["next_token"]
-    second_page = client.get(f"/inbox/{clsid}?limit=2&cursor={next_token}")
+    second_page = client.get(f"/api/inboxes/{clsid}?limit=2&cursor={next_token}")
 
     assert second_page.status_code == 200
     assert [event["request_id"] for event in second_page.json()["events"]] == ["evt-oldest"]
@@ -171,7 +171,7 @@ def test_get_inbox_filters_search_text_across_request_fields() -> None:
     _seed_inbox_with_events(session_factory, clsid)
     client = TestClient(app)
 
-    response = client.get(f"/inbox/{clsid}?q=searchable-preview")
+    response = client.get(f"/api/inboxes/{clsid}?q=searchable-preview")
 
     assert response.status_code == 200
     assert [event["request_id"] for event in response.json()["events"]] == ["evt-oldest"]
@@ -183,8 +183,8 @@ def test_get_inbox_returns_safe_errors_for_invalid_limits_and_expired_inbox() ->
     _seed_inbox_with_events(session_factory, clsid, expired=True)
     client = TestClient(app)
 
-    invalid_limit = client.get(f"/inbox/{clsid}?limit=101")
-    expired_response = client.get(f"/inbox/{clsid}")
+    invalid_limit = client.get(f"/api/inboxes/{clsid}?limit=101")
+    expired_response = client.get(f"/api/inboxes/{clsid}")
 
     assert invalid_limit.status_code == 400
     assert invalid_limit.json() == {
@@ -210,7 +210,7 @@ def test_get_inbox_returns_400_for_invalid_cursor() -> None:
     _seed_inbox_with_events(session_factory, clsid)
     client = TestClient(app)
 
-    response = client.get(f"/inbox/{clsid}?cursor=not-a-valid-token")
+    response = client.get(f"/api/inboxes/{clsid}?cursor=not-a-valid-token")
 
     assert response.status_code == 400
     assert response.json() == {
@@ -228,7 +228,7 @@ def test_get_inbox_returns_422_for_non_integer_limit_query() -> None:
     _seed_inbox_with_events(session_factory, clsid)
     client = TestClient(app)
 
-    response = client.get(f"/inbox/{clsid}?limit=abc")
+    response = client.get(f"/api/inboxes/{clsid}?limit=abc")
 
     assert response.status_code == 422
     assert response.json() == {
@@ -256,11 +256,11 @@ def test_get_inbox_returns_429_with_retry_hints_when_rate_limited() -> None:
     client = TestClient(app)
 
     first_response = client.get(
-        f"/inbox/{clsid}",
+        f"/api/inboxes/{clsid}",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
     second_response = client.get(
-        f"/inbox/{clsid}",
+        f"/api/inboxes/{clsid}",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
 
@@ -285,7 +285,7 @@ def test_get_inbox_event_detail_returns_full_payload_and_headers() -> None:
     _seed_inbox_with_events(session_factory, clsid)
     client = TestClient(app)
 
-    response = client.get(f"/inbox/{clsid}/events/evt-middle")
+    response = client.get(f"/api/inboxes/{clsid}/events/evt-middle")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -306,7 +306,7 @@ def test_get_inbox_event_detail_returns_safe_404_for_missing_event() -> None:
     _seed_inbox_with_events(session_factory, clsid)
     client = TestClient(app)
 
-    response = client.get(f"/inbox/{clsid}/events/missing-request")
+    response = client.get(f"/api/inboxes/{clsid}/events/missing-request")
 
     assert response.status_code == 404
     assert response.json() == {
@@ -325,11 +325,11 @@ def test_get_inbox_event_detail_uses_independent_rate_limit_budget_from_listing(
     client = TestClient(app)
 
     listing_response = client.get(
-        f"/inbox/{clsid}",
+        f"/api/inboxes/{clsid}",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
     detail_response = client.get(
-        f"/inbox/{clsid}/events/evt-middle",
+        f"/api/inboxes/{clsid}/events/evt-middle",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
 
@@ -344,11 +344,11 @@ def test_get_inbox_event_detail_returns_429_with_retry_hints_when_detail_budget_
     client = TestClient(app)
 
     first_response = client.get(
-        f"/inbox/{clsid}/events/evt-middle",
+        f"/api/inboxes/{clsid}/events/evt-middle",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
     second_response = client.get(
-        f"/inbox/{clsid}/events/evt-middle",
+        f"/api/inboxes/{clsid}/events/evt-middle",
         headers={"x-forwarded-for": "203.0.113.10"},
     )
 
@@ -374,5 +374,5 @@ def test_openapi_includes_inbox_viewer_route() -> None:
     response = client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert "/inbox/{clsid}" in response.json()["paths"]
-    assert "/inbox/{clsid}/events/{request_id}" in response.json()["paths"]
+    assert "/api/inboxes/{clsid}" in response.json()["paths"]
+    assert "/api/inboxes/{clsid}/events/{request_id}" in response.json()["paths"]

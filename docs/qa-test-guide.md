@@ -123,13 +123,13 @@ Purpose: verify viewer data contracts and operator-facing browsing behavior.
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-006-01 | `GET /inbox/{clsid}` returns the documented hook URL, events, next token, and metadata | API | implemented | Response matches the implemented viewer contract. |
+| QA-006-01 | `GET /api/inboxes/{clsid}` returns the documented hook URL, events, next token, and metadata | API | implemented | Response matches the implemented viewer contract. |
 | QA-006-02 | Cursor pagination returns the next stable page of events | API/E2E | implemented | Viewer pages advance deterministically by `received_at DESC, request_id DESC`. |
 | QA-006-03 | Search filters by request id, method, source IP, and payload preview | API/E2E | implemented | Results honor the documented query behavior. |
 | QA-006-04 | Pagination enforces default and maximum page sizes | API | implemented | Out-of-range limits return safe client errors. |
 | QA-006-05 | Invalid cursor input returns a safe client error | API | implemented | Malformed cursor tokens return the documented `400` envelope. |
 | QA-006-06 | Viewer-facing network identifiers are redacted by default | API/E2E | implemented | Public bearer-link view does not expose raw network identifiers. |
-| QA-006-07 | `GET /inbox/{clsid}/events/{request_id}` returns full payload detail and sanitized headers | API | implemented | Selected event detail matches the documented contract. |
+| QA-006-07 | `GET /api/inboxes/{clsid}/events/{request_id}` returns full payload detail and sanitized headers | API | implemented | Selected event detail matches the documented contract. |
 
 ## Suite QA-007 Payload Rendering And Safe Inspection
 
@@ -176,10 +176,10 @@ Purpose: verify resilience controls, retry-safe ingest, and cleanup behavior.
 
 | Case ID | Test case | Type | Status | Expected result |
 | --- | --- | --- | --- | --- |
-| QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | `GET /`, `POST /hook/{clsid}`, and viewer routes return safe `429` responses with retry hints when the source-IP budget is exhausted. |
+| QA-010-01 | Public endpoints enforce documented rate limits | API/Load | implemented | `GET /api/bootstrap`, `POST /hook/{clsid}`, and viewer API routes return safe `429` responses with retry hints when the source-IP budget is exhausted. |
 | QA-010-02 | Retryable failures include `Retry-After` and retry details | API | implemented | `429` responses include documented retry data. |
 | QA-010-02A | Inbox detail requests use a separate rate-limit budget from inbox listing requests | API | implemented | A normal list-plus-detail viewer flow does not exhaust one shared viewer bucket. |
-| QA-010-02B | Consented visit metadata updates use a separate rate-limit budget from bootstrap provisioning | API | implemented | A successful `GET /` can be followed by one consented `POST /visit-metadata` without double-charging the bootstrap budget for the same visit. |
+| QA-010-02B | Consented visit metadata updates use a separate rate-limit budget from bootstrap provisioning | API | implemented | A successful `GET /api/bootstrap` can be followed by one consented `POST /api/visit-metadata` without double-charging the bootstrap budget for the same visit. |
 | QA-010-03 | Deterministic deduplication marks duplicate deliveries safely | API/Unit | blocked | Duplicate events do not overwrite canonical first-capture data. |
 | QA-010-04 | Daily cleanup removes expired inboxes and stale events idempotently | Integration | blocked | Cleanup can be rerun without corrupting data. |
 | QA-010-05 | Concurrent hook delivery does not corrupt event records | API/Concurrency | implemented | Concurrent `POST /hook/{clsid}` requests persist distinct events without data loss through the request and background-persistence path. |
@@ -216,17 +216,17 @@ Current automated coverage in the repository maps to these suites:
 
 | Existing test file | Covered suites |
 | --- | --- |
-| `backend/tests/test_app.py` | QA-001 |
-| `backend/tests/test_config.py` | QA-002 |
+| `tests/test_app.py` | QA-001 |
+| `tests/test_config.py` | QA-002 |
 | `frontend/src/config/runtime.test.ts` | QA-002 |
-| `backend/tests/test_inbox_service.py` | QA-004, QA-009 |
-| `backend/tests/test_bootstrap_api.py` | QA-004, QA-009 |
-| `backend/tests/test_inbox_viewer_service.py` | QA-006, QA-007 |
-| `backend/tests/test_inbox_viewer_api.py` | QA-006, QA-009, QA-010 |
-| `backend/tests/test_webhook_service.py` | QA-002, QA-005, QA-007 |
-| `backend/tests/test_hook_api.py` | QA-005, QA-007, QA-010 |
-| `backend/tests/test_persistence_models.py` | QA-003 |
-| `backend/tests/test_migrations.py` | QA-003 |
+| `tests/test_inbox_service.py` | QA-004, QA-009 |
+| `tests/test_bootstrap_api.py` | QA-004, QA-009 |
+| `tests/test_inbox_viewer_service.py` | QA-006, QA-007 |
+| `tests/test_inbox_viewer_api.py` | QA-006, QA-009, QA-010 |
+| `tests/test_webhook_service.py` | QA-002, QA-005, QA-007 |
+| `tests/test_hook_api.py` | QA-005, QA-007, QA-010 |
+| `tests/test_persistence_models.py` | QA-003 |
+| `tests/test_migrations.py` | QA-003 |
 | `frontend/src/router/router.test.ts` | QA-011 |
 | `frontend/src/views/HomeView.test.ts` | QA-009, QA-011 |
 | `frontend/tests/e2e/inbox-ui.spec.ts` | QA-009, QA-011 |
@@ -236,14 +236,12 @@ Current automated coverage in the repository maps to these suites:
 Backend regression:
 
 ```bash
-cd backend
 pytest
 ```
 
 Focused migration regression:
 
 ```bash
-cd backend
 pytest tests/test_persistence_models.py tests/test_migrations.py
 ```
 
@@ -277,6 +275,6 @@ When a change introduces or modifies behavior:
 ## 10. Recommended Next Additions
 
 1. Add Playwright coverage for privacy-visible metadata and consent flows when GPS or locality prompts are introduced in the frontend.
-2. Add API tests for `POST /hook/{clsid}` and `GET /inbox/{clsid}` edge cases that are not already covered by the current contract suites.
+2. Add API tests for `POST /hook/{clsid}` and `GET /api/inboxes/{clsid}` edge cases that are not already covered by the current contract suites.
 3. Add API tests for plain-text hook payload acceptance once a dedicated text-ingest fixture is added.
 4. Add dedicated load and concurrency checks for burst webhook ingestion before production release.

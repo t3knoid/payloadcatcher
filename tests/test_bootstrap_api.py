@@ -72,7 +72,7 @@ def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) ->
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get(
-        "/?timezone=UTC",
+        "/api/bootstrap?timezone=UTC",
         headers={
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/136.0.0.0 Safari/537.36",
             "referer": "https://www.payloadcat.ch",
@@ -90,7 +90,7 @@ def test_first_visit_sets_cookie_and_revisit_reuses_active_inbox(monkeypatch) ->
     assert first_payload["viewer_url"] == f"https://payloadcat.ch/inbox/{first_payload['clsid']}"
     assert first_payload["expires_at"] == "2026-05-16T12:00:00Z"
 
-    second_response = client.get("/")
+    second_response = client.get("/api/bootstrap")
 
     assert second_response.status_code == 200
     second_payload = second_response.json()
@@ -114,11 +114,11 @@ def test_expired_session_rotates_to_new_inbox(monkeypatch) -> None:
     app, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
-    first_response = client.get("/")
+    first_response = client.get("/api/bootstrap")
     first_payload = first_response.json()
 
     current_time["value"] = current_time["value"] + timedelta(hours=25)
-    second_response = client.get("/")
+    second_response = client.get("/api/bootstrap")
     second_payload = second_response.json()
 
     assert second_response.status_code == 200
@@ -138,11 +138,11 @@ def test_exact_expiration_boundary_rotates_inbox(monkeypatch) -> None:
     app, _ = _build_test_app()
     client = TestClient(app, base_url="https://testserver")
 
-    first_response = client.get("/")
+    first_response = client.get("/api/bootstrap")
     first_payload = first_response.json()
 
     current_time["value"] = current_time["value"] + timedelta(hours=24)
-    second_response = client.get("/")
+    second_response = client.get("/api/bootstrap")
     second_payload = second_response.json()
 
     assert second_response.status_code == 200
@@ -162,7 +162,7 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
     client = TestClient(app, base_url="https://testserver")
 
     first_response = client.get(
-        "/",
+        "/api/bootstrap",
         headers={
             "x-forwarded-for": "203.0.113.10",
         },
@@ -170,7 +170,7 @@ def test_revisit_from_new_ip_keeps_callback_stable_and_records_new_source_ip(mon
     first_payload = first_response.json()
 
     second_response = client.get(
-        "/",
+        "/api/bootstrap",
         headers={
             "x-forwarded-for": "198.51.100.8",
         },
@@ -202,7 +202,7 @@ def test_visit_metadata_persists_gps_consent_and_trusted_locality(monkeypatch) -
     client = TestClient(app, base_url="https://testserver")
 
     response = client.get(
-        "/",
+        "/api/bootstrap",
         params={
             "timezone": "America/New_York",
         },
@@ -219,7 +219,7 @@ def test_visit_metadata_persists_gps_consent_and_trusted_locality(monkeypatch) -
     assert response.status_code == 200
 
     gps_response = client.post(
-        "/visit-metadata",
+        "/api/visit-metadata",
         json={
             "gps_consent": True,
             "gps_lat": 35.77959,
@@ -249,12 +249,12 @@ def test_visit_metadata_rejects_partial_gps_payload() -> None:
     app, _ = _build_test_app(trusted_proxies=["testclient"])
     client = TestClient(app, base_url="https://testserver")
 
-    bootstrap_response = client.get("/")
+    bootstrap_response = client.get("/api/bootstrap")
 
     assert bootstrap_response.status_code == 200
 
     response = client.post(
-        "/visit-metadata",
+        "/api/visit-metadata",
         json={
             "gps_consent": True,
             "gps_lat": 35.77959,
@@ -285,7 +285,7 @@ def test_visit_metadata_ignores_gps_without_explicit_consent() -> None:
     client = TestClient(app, base_url="https://testserver")
 
     response = client.get(
-        "/",
+        "/api/bootstrap",
         headers={
             "x-geo-city": "Raleigh, NC",
         },
@@ -307,7 +307,7 @@ def test_visit_metadata_update_requires_active_session_cookie() -> None:
     client = TestClient(app, base_url="https://testserver")
 
     response = client.post(
-        "/visit-metadata",
+        "/api/visit-metadata",
         json={
             "gps_consent": True,
             "gps_lat": 35.77959,
@@ -324,14 +324,14 @@ def test_visit_metadata_uses_independent_rate_limit_scope() -> None:
     client = TestClient(app, base_url="https://testserver")
 
     bootstrap_response = client.get(
-        "/",
+        "/api/bootstrap",
         params={"timezone": "America/New_York"},
     )
 
     assert bootstrap_response.status_code == 200
 
     metadata_response = client.post(
-        "/visit-metadata",
+        "/api/visit-metadata",
         json={
             "gps_consent": True,
             "gps_lat": 35.77959,
@@ -360,12 +360,12 @@ def test_visit_metadata_does_not_persist_gps_when_collection_is_disabled() -> No
     app.dependency_overrides[get_settings] = lambda: overridden_settings
     client = TestClient(app, base_url="https://testserver")
 
-    bootstrap_response = client.get("/")
+    bootstrap_response = client.get("/api/bootstrap")
 
     assert bootstrap_response.status_code == 200
 
     metadata_response = client.post(
-        "/visit-metadata",
+        "/api/visit-metadata",
         json={
             "gps_consent": True,
             "gps_lat": 35.77959,
@@ -391,15 +391,15 @@ def test_openapi_includes_bootstrap_route() -> None:
     response = client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert "/" in response.json()["paths"]
+    assert "/api/bootstrap" in response.json()["paths"]
 
 
 def test_get_root_returns_429_with_retry_hints_when_rate_limited() -> None:
     app, _ = _build_test_app(rate_limit_per_minute=1)
     client = TestClient(app, base_url="https://testserver")
 
-    first_response = client.get("/", headers={"x-forwarded-for": "203.0.113.10"})
-    second_response = client.get("/", headers={"x-forwarded-for": "203.0.113.10"})
+    first_response = client.get("/api/bootstrap", headers={"x-forwarded-for": "203.0.113.10"})
+    second_response = client.get("/api/bootstrap", headers={"x-forwarded-for": "203.0.113.10"})
 
     assert first_response.status_code == 200
     assert second_response.status_code == 429
@@ -428,7 +428,7 @@ def test_concurrent_revisit_with_same_session_cookie_keeps_active_inbox_stable()
 
         with TestClient(app, base_url="https://testserver") as client:
             initial_response = client.get(
-                "/",
+                "/api/bootstrap",
                 headers={"x-forwarded-for": "203.0.113.10"},
             )
 
@@ -439,7 +439,7 @@ def test_concurrent_revisit_with_same_session_cookie_keeps_active_inbox_stable()
         def revisit(_: int) -> tuple[int, str]:
             with TestClient(app, base_url="https://testserver") as client:
                 response = client.get(
-                    "/",
+                    "/api/bootstrap",
                     headers={
                         "cookie": cookie_header,
                         "x-forwarded-for": "203.0.113.10",

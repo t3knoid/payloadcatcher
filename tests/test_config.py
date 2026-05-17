@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
-from app.core.config import Settings
+from app.core.config import PROJECT_ENV_FILE, Settings
 
 
 def test_settings_parse_comma_delimited_list_env_values(monkeypatch) -> None:
@@ -38,6 +40,16 @@ def test_settings_include_hook_payload_limit_and_content_type_header_by_default(
         "accept-language",
     ]
     assert settings.cors_allow_origin_networks == []
+
+
+def test_settings_default_env_file_is_absolute_backend_env_path() -> None:
+    env_file = Settings.model_config.get("env_file")
+
+    assert env_file == PROJECT_ENV_FILE
+    assert isinstance(env_file, Path)
+    assert env_file.is_absolute()
+    assert env_file.name == ".env"
+    assert env_file.parent.name == "payloadcatcher"
 
 
 def test_settings_reject_invalid_cors_allow_origin_network() -> None:

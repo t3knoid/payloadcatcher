@@ -25,6 +25,7 @@ Swagger and OpenAPI documentation are also required parts of the API surface:
 
 - The site-facing application port defaults to `8080`.
 - The local backend API development port remains `8000`.
+- Vite is used only for frontend development. Production and production-like single-origin runs build frontend assets with `npm run build`, and FastAPI serves the compiled output from `frontend/dist`.
 - Deployments must support reverse-proxy operation without changing canonical external URL behavior.
 - External URL generation must rely on configured base URL values and trusted forwarded-header handling.
 
@@ -36,6 +37,15 @@ Swagger and OpenAPI documentation are also required parts of the API surface:
 ## Current Implemented Endpoints
 
 ### GET /
+
+Serve the compiled frontend application shell.
+
+Current behavior:
+
+- Returns the SPA entrypoint HTML for the home route.
+- Does not provision an inbox directly; the browser then calls `GET /api/bootstrap`.
+
+### GET /api/bootstrap
 
 Provision or return the active inbox callback URL for the current browser session.
 
@@ -74,11 +84,11 @@ Notes:
 - The callback URL always uses the canonical hook pattern.
 - The homepage privacy notice is expected to render before this request runs on first visit so browser metadata collection is disclosed at collection time.
 - Locality capture is best-effort and uses the configured `LOCALITY_HEADER_NAME` only when the incoming client is a trusted proxy.
-- GPS coordinates are stored only after explicit opt-in through `POST /visit-metadata` and may remain empty when the browser declines or cannot provide geolocation.
+- GPS coordinates are stored only after explicit opt-in through `POST /api/visit-metadata` and may remain empty when the browser declines or cannot provide geolocation.
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
 - Safe `500` error envelopes continue to apply to unhandled failures.
 
-### POST /visit-metadata
+### POST /api/visit-metadata
 
 Persist consented visit metadata that should not be transported in URL parameters.
 
@@ -208,6 +218,15 @@ Notes:
 
 ### GET /inbox/{clsid}
 
+Serve the compiled frontend application shell for a viewer route.
+
+Current behavior:
+
+- Returns the SPA entrypoint HTML for direct navigation to an inbox viewer URL.
+- The browser then loads viewer data through `GET /api/inboxes/{clsid}`.
+
+### GET /api/inboxes/{clsid}
+
 Return the public bearer-style inbox event list and related viewer metadata for a valid inbox identifier.
 
 Current behavior:
@@ -223,7 +242,7 @@ Current behavior:
   - IPv4 is masked to `/24`
   - IPv6 is masked to `/64`
 - Returns stored payload preview text without reparsing the YAML, and truncates public previews to the `VIEWER_PAYLOAD_PREVIEW_CHARS` limit, which must be at least `4`.
-- Keeps the list payloads preview-only; the full selected payload and headers are fetched through `GET /inbox/{clsid}/events/{request_id}`.
+- Keeps the list payloads preview-only; the full selected payload and headers are fetched through `GET /api/inboxes/{clsid}/events/{request_id}`.
 
 Request details:
 
@@ -274,7 +293,7 @@ Notes:
 - `429` responses include `Retry-After` and `error.details.retry_after_seconds`.
 - Viewer previews reflect the stored YAML or text preview created during hook ingestion; the viewer endpoint does not execute or dynamically parse payload content.
 
-### GET /inbox/{clsid}/events/{request_id}
+### GET /api/inboxes/{clsid}/events/{request_id}
 
 Return the full stored payload rendering and selected request metadata for a valid inbox event.
 

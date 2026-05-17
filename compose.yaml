@@ -1,9 +1,9 @@
 services:
   api:
     build:
-      context: ./backend
+      context: .
     env_file:
-      - ./backend/.env.example
+      - ./.env.example
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/payloadcatcher
     ports:
@@ -16,21 +16,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-
-  frontend:
-    build:
-      context: ./frontend
-      target: dev
-    environment:
-      VITE_API_BASE_URL: http://127.0.0.1:8000
-    ports:
-      - "5173:5173"
-    depends_on:
-      api:
-        condition: service_healthy
-    volumes:
-      - ./frontend:/app
-      - payloadcatcher-frontend-node-modules:/app/node_modules
 
   db:
     image: postgres:16
@@ -50,4 +35,3 @@ services:
 
 volumes:
   payloadcatcher-postgres:
-  payloadcatcher-frontend-node-modules:

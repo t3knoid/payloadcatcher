@@ -14,6 +14,10 @@ const isVitePort = (port: string): boolean => {
   return port === '5173' || port === '4173';
 };
 
+const isViteRuntime = (locationValue: Location): boolean => {
+  return isVitePort(locationValue.port);
+};
+
 const rebaseLoopbackApiBaseUrl = (envConfig: string, locationValue: Location): string => {
   if (!envConfig || isLoopbackHost(locationValue.hostname) || !isVitePort(locationValue.port)) {
     return envConfig;
@@ -44,6 +48,10 @@ const inferLocalApiBaseUrl = (locationValue: Location): string => {
 };
 
 const resolveApiBaseUrl = ({ envConfig, locationValue }: { envConfig: string; locationValue: Location }): string => {
+  if (!isViteRuntime(locationValue)) {
+    return '';
+  }
+
   const rebasedEnvConfig = rebaseLoopbackApiBaseUrl(envConfig, locationValue);
   if (rebasedEnvConfig) {
     return rebasedEnvConfig;

@@ -24,6 +24,26 @@ def test_openapi_includes_health_route() -> None:
     assert "/healthz" in response.json()["paths"]
 
 
+def test_root_serves_frontend_app_shell() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<div id=\"app\"></div>" in response.text
+
+
+def test_inbox_route_serves_frontend_app_shell() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/inbox/550e8400-e29b-41d4-a716-446655440000")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<div id=\"app\"></div>" in response.text
+
+
 def test_cors_preflight_allows_frontend_origin() -> None:
     client = TestClient(create_app())
 

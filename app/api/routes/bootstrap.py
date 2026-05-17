@@ -8,11 +8,11 @@ from app.api.schemas.common import SafeErrorResponse
 from app.api.schemas.inbox import ProvisionInboxQuery, ProvisionInboxResponse, VisitMetadataUpdateRequest
 from app.services.inbox_provisioning import InboxProvisioningService, get_inbox_provisioning_service
 
-router = APIRouter(tags=["inbox"])
+router = APIRouter(prefix="/api", tags=["inbox"])
 
 
 @router.get(
-    "/",
+    "/bootstrap",
     response_model=ProvisionInboxResponse,
     summary="Provision inbox callback URL",
     description="Create or reuse the active inbox callback URL for the current browser session.",

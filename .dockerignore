@@ -1,0 +1,9 @@
+__pycache__/
+.pytest_cache/
+.venv/
+tests/
+frontend/node_modules/
+frontend/playwright-report.json
+frontend/playwright-output.txt
+frontend/pw-results-fresh/
+frontend/test-results/

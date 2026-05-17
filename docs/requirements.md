@@ -13,6 +13,8 @@ The www host is allowed for site entry, but callback and viewer URLs use the can
 Default serving requirements:
 
 - The site is served on port `8080` by default.
+- Vite is used only for frontend development and asset builds.
+- Production and production-like single-origin runs build the frontend with `npm run build`, and FastAPI serves the compiled output from `frontend/dist`.
 - The deployment structure must support running behind a reverse proxy.
 - Reverse-proxy deployments must preserve canonical host behavior, forwarded scheme, forwarded host, and client IP handling.
 - Development workflows must support Windows, macOS, and Linux.
@@ -30,6 +32,11 @@ Default serving requirements:
 
 ## 3. First-Visit Provisioning
 
+Browser-flow requirements:
+
+1. The site entry route serves the frontend application shell.
+2. Browser provisioning requests use a dedicated JSON endpoint under `/api`.
+
 1. On first site visit, the backend creates a new inbox `clsid`.
 2. The callback URL is paired to requester context anchored to source IP plus a session cookie.
 3. If the active URL is still within its 24-hour TTL, the same URL is returned.
@@ -37,6 +44,7 @@ Default serving requirements:
 5. Session continuity uses cookie-first identity; source IP is a risk and abuse signal, not the sole session key.
 6. Source IP normalization honors trusted proxy configuration before using forwarded headers.
 7. If source IP changes while session cookie is valid, the callback URL remains stable unless abuse policy requires rotation.
+8. Browser provisioning uses `GET /api/bootstrap` after the SPA has loaded.
 
 ## 4. Visit Metadata Collection
 
@@ -55,6 +63,8 @@ The platform records the following metadata at site visit time:
 - GPS location (only when explicit user consent is granted)
 
 Metadata collection is best effort and must not block callback URL provisioning.
+
+Browser metadata updates for consented GPS data use a dedicated JSON endpoint under `/api` and must not place coordinates in URL parameters.
 
 ## 5. Cookie Requirements
 
@@ -76,6 +86,8 @@ Metadata collection is best effort and must not block callback URL provisioning.
 2. The viewer lists captures associated with a valid `clsid`.
 3. If a `clsid` is expired or unknown, the viewer returns a safe not-found response.
 4. YAML rendering escapes unsafe content and never executes payload data.
+5. Direct viewer navigation loads the SPA shell at `/inbox/{clsid}`.
+6. Browser viewer data requests use dedicated JSON endpoints under `/api/inboxes/{clsid}`.
 
 ## 8. Abuse Protection
 
@@ -110,15 +122,17 @@ Default settings are configured through `.env` values, including:
 
 1. The default site-facing application port is `8080`.
 2. The architecture must support deployment behind a reverse proxy such as Nginx, Caddy, Traefik, or equivalent infrastructure.
-3. Reverse-proxy support must preserve:
+3. A single-origin deployment model is required for production-like serving: the reverse proxy forwards to FastAPI, and FastAPI serves both the compiled UI and the JSON API.
+4. The reverse proxy is not responsible for running a separate Vite production server.
+5. Reverse-proxy support must preserve:
    - canonical host behavior for `payloadcat.ch`
    - forwarded scheme handling for HTTP to HTTPS termination
    - trusted proxy-aware client IP normalization
    - header forwarding required for request tracing and safe origin handling
-4. Reverse-proxy deployment must not break callback generation, viewer URLs, rate limiting, or auth verification behavior.
-5. Public URL generation must rely on configured external base URL values rather than raw socket host and port values.
-6. Local development and test workflows must remain executable on Windows, macOS, and Linux without requiring OS-specific application logic.
-7. Production runtime assumptions may target Linux-based hosting, but repository structure and tooling must remain cross-platform for development use.
+6. Reverse-proxy deployment must not break callback generation, viewer URLs, rate limiting, or auth verification behavior.
+7. Public URL generation must rely on configured external base URL values rather than raw socket host and port values.
+8. Local development and test workflows must remain executable on Windows, macOS, and Linux without requiring OS-specific application logic.
+9. Production runtime assumptions may target Linux-based hosting, but repository structure and tooling must remain cross-platform for development use.
 
 ## 11. Legal and Privacy Warning
 
@@ -193,6 +207,7 @@ Minimum requirements:
 6. Swagger documentation must stay aligned with `docs/api.md` and `docs/route-contract.md`.
 7. Any API implementation or API modification is incomplete unless both the generated Swagger documentation and `docs/api.md` reflect the change.
 8. Site-facing serving defaults on port `8080` do not change the local backend API documentation requirement on port `8000`.
+9. Browser-facing JSON API flows for site bootstrap, consented metadata updates, and inbox data are documented under `/api` routes even when the SPA itself is served from `/` and `/inbox/{clsid}`.
 
 ## 16. Listing Scale and Query Behavior
 

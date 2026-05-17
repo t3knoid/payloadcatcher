@@ -87,12 +87,12 @@ const requestWithoutJsonResponse = async (
 
 export const apiClient = {
   bootstrapInbox(params?: BootstrapRequest): Promise<BootstrapResponse> {
-    return request<BootstrapResponse>('/', undefined, {
+    return request<BootstrapResponse>('/api/bootstrap', undefined, {
       timezone: params?.timezone,
     });
   },
   updateVisitMetadata(payload: VisitMetadataUpdateRequest): Promise<void> {
-    return requestWithoutJsonResponse('/visit-metadata', {
+    return requestWithoutJsonResponse('/api/visit-metadata', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,10 +105,10 @@ export const apiClient = {
     });
   },
   getInbox(clsid: string, params?: { q?: string; cursor?: string | null; limit?: number }): Promise<InboxResponse> {
-    return request<InboxResponse>(`/inbox/${clsid}`, undefined, params);
+    return request<InboxResponse>(`/api/inboxes/${clsid}`, undefined, params);
   },
   getInboxEventDetail(clsid: string, requestId: string): Promise<InboxEventDetail> {
-    return request<InboxEventDetail>(`/inbox/${clsid}/events/${encodeURIComponent(requestId)}`);
+    return request<InboxEventDetail>(`/api/inboxes/${clsid}/events/${encodeURIComponent(requestId)}`);
   },
 };
 
