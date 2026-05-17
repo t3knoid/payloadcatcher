@@ -1,6 +1,6 @@
 ---
 name: Scaffold Ticket
-description: "Generate a scoped, implementation-ready PayloadCatcher engineering ticket from a feature request, issue summary, or subsystem change."
+description: "Generate a scoped, implementation-ready PayloadCatcher GitHub issue from a feature request, issue summary, or subsystem change."
 argument-hint: "Paste the feature request, acceptance criteria, issue text, or subsystem to turn into a build-ready ticket"
 agent: agent
 ---
@@ -28,11 +28,21 @@ If one of these sources is missing, say so explicitly.
 
 ## Goal
 
-Draft one implementation ticket that is specific, testable, documentation-aware, and ready for engineering work.
+Draft one implementation issue that is specific, testable, documentation-aware, and ready for engineering work.
 
-The ticket must preserve strict architecture boundaries and provider-agnostic webhook behavior.
+Create the GitHub issue in the current repository by using the `gh` CLI tool after drafting the issue content.
 
-## Ticket shaping rules
+The issue must preserve strict architecture boundaries and provider-agnostic webhook behavior.
+
+## GitHub Issue Creation Requirements
+
+- After drafting the issue title and body, create the issue in the current repository with a non-interactive `gh issue create` command.
+- Use the `gh` CLI through the terminal tool; do not stop after only drafting the issue text when issue creation is possible.
+- Prefer a non-interactive form such as `gh issue create --title <title> --body-file <file>` or an equivalent safe non-interactive variant.
+- If `gh` is unavailable, the user is not authenticated, or issue creation fails for an environment reason you cannot resolve safely, say so explicitly and return the ready-to-submit issue title and body.
+- After successful creation, include the created issue number and URL in the final response.
+
+## Issue shaping rules
 
 - Keep routers thin and business logic in services.
 - Preserve provider-agnostic ingestion for JSON and non-JSON payloads.
@@ -159,3 +169,4 @@ Call out unknowns explicitly when the request is underspecified.
 - Prefer small, reviewable slices over multi-system rewrites.
 - Be explicit about documentation work when behavior changes.
 - Do not invent provider-specific behavior unless the request explicitly requires it.
+- When issue creation succeeds, report the final GitHub issue number and URL after the issue content summary.
