@@ -109,12 +109,11 @@ def _sanitize_validation_errors(exc: RequestValidationError) -> dict[str, Any]:
 
 async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
     headers = dict(exc.headers or {})
-    message = exc.detail if isinstance(exc.detail, str) and exc.detail else _status_message(exc.status_code)
     return JSONResponse(
         status_code=exc.status_code,
         content=build_error_content(
             _status_error_code(exc.status_code),
-            message,
+            _status_message(exc.status_code),
             details=_build_retry_details(headers, exc.status_code),
         ),
         headers=headers,

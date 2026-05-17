@@ -210,10 +210,33 @@ def test_http_exception_returns_retry_hints_for_503_responses() -> None:
     assert response.json() == {
         "error": {
             "code": "service_unavailable",
-            "message": "Service temporarily unavailable",
+            "message": "Service Unavailable",
             "details": {
                 "retry_after_seconds": 30,
             },
+        },
+        "request_id": response.headers["x-request-id"],
+    }
+
+
+def test_http_exception_does_not_echo_unsafe_detail_strings() -> None:
+    app = create_app()
+    router = APIRouter()
+
+    @router.get("/unsafe-http-detail")
+    async def unsafe_http_detail() -> dict[str, str]:
+        raise HTTPException(status_code=400, detail="database password missing from /srv/app/.env")
+
+    app.include_router(router)
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.get("/unsafe-http-detail")
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": {
+            "code": "bad_request",
+            "message": "Bad Request",
         },
         "request_id": response.headers["x-request-id"],
     }
